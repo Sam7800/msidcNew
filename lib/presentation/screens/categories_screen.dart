@@ -668,47 +668,51 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final categoriesWithCountsAsync = ref.watch(categoriesWithCountsProvider);
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.background,
-              AppColors.primaryContainer.withOpacity(0.3),
-            ],
-          ),
-        ),
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            SliverAppBar(
-              floating: true,
-              pinned: true,
-              expandedHeight: 160,
-              backgroundColor: AppColors.primary,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(
-                  Constants.appName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                  ),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar - Clean, minimal with border bottom
+          SliverAppBar(
+            floating: true,
+            pinned: true,
+            expandedHeight: 140,
+            backgroundColor: AppColors.surface,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                Constants.appName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600, // Reduced from w900
+                  letterSpacing: -0.2, // Tighter, modern
+                  color: AppColors.textPrimary, // Dark text, not white
                 ),
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.engineering,
-                      size: 60,
-                      color: Colors.white,
+              ),
+              background: Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.border,
+                      width: 1,
                     ),
                   ),
                 ),
+                child: const Center(
+                  child: Icon(
+                    Icons.engineering,
+                    size: 48, // Reduced from 60
+                    color: AppColors.primary, // Dark grey, not white
+                  ),
+                ),
               ),
-              actions: [
+            ),
+            iconTheme: const IconThemeData(
+              color: AppColors.textPrimary, // Dark icons to match text
+              size: 22,
+            ),
+            actions: [
                 IconButton(
                   icon: const Icon(Icons.create_new_folder),
                   tooltip: 'Create Category',
@@ -737,116 +741,116 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     ref.refresh(projectCountByCategoryProvider);
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  tooltip: Constants.tooltipLogout,
-                  onPressed: _handleLogout,
-                ),
-              ],
-            ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: Constants.tooltipLogout,
+                onPressed: _handleLogout,
+              ),
+            ],
+          ),
 
-            // Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          // Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 12), // More breathing room
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Project Categories',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600, // Reduced from w900
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Select a category to view projects',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Categories Grid
+          categoriesWithCountsAsync.when(
+            data: (categoriesWithCounts) {
+              final categories = categoriesWithCounts.keys.toList();
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), // More breathing room
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 1.0,
+                    crossAxisSpacing: 20, // Increased from 12
+                    mainAxisSpacing: 20, // Increased from 12
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final category = categories[index];
+                      final count = categoriesWithCounts[category] ?? 0;
+                      return _CategoryCard(
+                        category: category,
+                        projectCount: count,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProjectsScreen(
+                                category: category,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    childCount: categories.length,
+                  ),
+                ),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (error, stack) => SliverFillRemaining(
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Project Categories',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w900,
-                          ),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: AppColors.error,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 16),
                     Text(
-                      'Select a category to view projects',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                      'Error: $error',
+                      style: const TextStyle(color: AppColors.error),
                     ),
                   ],
                 ),
               ),
             ),
+          ),
 
-            // Categories Grid
-            categoriesWithCountsAsync.when(
-              data: (categoriesWithCounts) {
-                final categories = categoriesWithCounts.keys.toList();
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      childAspectRatio: 1.0,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final category = categories[index];
-                        final count = categoriesWithCounts[category] ?? 0;
-                        return _CategoryCard(
-                          category: category,
-                          projectCount: count,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProjectsScreen(
-                                  category: category,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      childCount: categories.length,
-                    ),
-                  ),
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              error: (error, stack) => SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppColors.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error: $error',
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Footer spacing
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 16),
-            ),
-          ],
-        ),
+          // Footer spacing
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 16),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Category Card Widget
-class _CategoryCard extends StatelessWidget {
+
+/// Category Card Widget - Modern, minimal design
+class _CategoryCard extends StatefulWidget {
   final Category category;
   final int projectCount;
   final VoidCallback onTap;
@@ -858,92 +862,130 @@ class _CategoryCard extends StatelessWidget {
   });
 
   @override
+  State<_CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<_CategoryCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final categoryColor = category.getColor();
+    final categoryColor = widget.category.getColor();
 
-    return Card(
-      elevation: 2,
-      shadowColor: AppColors.shadow,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [categoryColor, categoryColor.withOpacity(0.7)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHovered ? categoryColor : AppColors.border,
+            width: _isHovered ? 2 : 1,
           ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Large Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  category.getIcon(),
-                  size: 32,
-                  color: categoryColor,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Category Name (centered, up to 2 lines)
-              Text(
-                category.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-
-              const Spacer(),
-
-              // Project Count Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.folder_outlined,
-                      size: 14,
-                      color: categoryColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$projectCount',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: categoryColor,
+          // Subtle shadow
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: categoryColor.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Icon with subtle colored background
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.getCategoryBackgroundLight(widget.category.name),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.getCategoryBorderColor(widget.category.name),
+                        width: 1,
                       ),
                     ),
-                  ],
-                ),
+                    child: Icon(
+                      widget.category.getIcon(),
+                      size: 32,
+                      color: categoryColor,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Category Name
+                  Text(
+                    widget.category.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600, // Reduced from w800
+                          fontSize: 15,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const Spacer(),
+
+                  // Project Count Badge - Minimal design
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.getCategoryBackgroundLight(widget.category.name),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.getCategoryBorderColor(widget.category.name),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.folder_outlined,
+                          size: 14,
+                          color: categoryColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${widget.projectCount}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600, // Reduced from w800
+                            color: categoryColor,
+                          ),
+                        ),
+                        Text(
+                          ' projects',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

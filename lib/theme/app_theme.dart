@@ -3,7 +3,7 @@ import 'app_colors.dart';
 
 /// App theme configuration using Material 3
 class AppTheme {
-  /// Light theme - Modern & Vibrant
+  /// Light theme - Professional & Calm (Claude-inspired)
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -20,51 +20,57 @@ class AppTheme {
         brightness: Brightness.light,
       ),
 
-      // App bar theme - Modern gradient style
+      // App bar theme - Clean, minimal (white with border bottom)
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-        scrolledUnderElevation: 4,
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        shadowColor: AppColors.shadow,
+        scrolledUnderElevation: 0, // Flat, no shadow even when scrolled
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textOnPrimary,
-          letterSpacing: 0.5,
+          fontSize: 20,
+          fontWeight: FontWeight.w600, // Reduced from w700
+          color: AppColors.textPrimary,
+          letterSpacing: -0.2, // Tighter, modern spacing
         ),
         iconTheme: const IconThemeData(
-          color: AppColors.textOnPrimary,
-          size: 24,
+          color: AppColors.textPrimary,
+          size: 22,
         ),
       ),
 
-      // Card theme - Modern elevated cards
+      // Card theme - Border-based, minimal shadow
       cardTheme: CardThemeData(
-        elevation: 3,
-        shadowColor: AppColors.shadow,
+        elevation: 0, // No elevation, use border instead
+        shadowColor: Colors.transparent,
+        color: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12), // Reduced from 16
+          side: const BorderSide(
+            color: AppColors.border,
+            width: 1,
+          ),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // More breathing room
         clipBehavior: Clip.antiAlias,
       ),
 
-      // Elevated button theme - Bold and modern
+      // Elevated button theme - Flat, professional
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          elevation: 2,
-          shadowColor: AppColors.shadow,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          elevation: 0, // Flat design
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          minimumSize: const Size(0, 40), // Consistent height
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8), // Cleaner, reduced from 12
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+            fontSize: 15,
+            fontWeight: FontWeight.w500, // Reduced from w700
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -72,14 +78,15 @@ class AppTheme {
       // Text button theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          minimumSize: const Size(0, 40),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            fontSize: 15,
+            fontWeight: FontWeight.w500, // Reduced from w700
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -87,22 +94,23 @@ class AppTheme {
       // Outlined button theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          minimumSize: const Size(0, 40),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8), // Reduced from 12
           ),
-          side: const BorderSide(color: AppColors.primary, width: 2.5),
+          side: const BorderSide(color: AppColors.border, width: 1), // Subtle border
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+            fontSize: 15,
+            fontWeight: FontWeight.w500, // Reduced from w700
+            letterSpacing: 0.2,
           ),
         ),
       ),
 
       // Floating Action Button theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        elevation: 4,
+        elevation: 2, // Reduced from 4
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
@@ -112,152 +120,155 @@ class AppTheme {
         ),
       ),
 
-      // Input decoration theme - Modern rounded inputs
+      // Input decoration theme - Clean, white background
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceVariant,
+        fillColor: AppColors.surface, // White, not grey
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+          borderRadius: BorderRadius.circular(8), // Reduced from 12
+          borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5), // Reduced from 2.5
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 2.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
         labelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          fontWeight: FontWeight.w500, // Reduced from w600
           color: AppColors.textSecondary,
         ),
         floatingLabelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          fontWeight: FontWeight.w500, // Reduced from w700
           color: AppColors.primary,
         ),
         hintStyle: const TextStyle(
-          fontSize: 15,
-          color: AppColors.textDisabled,
+          fontSize: 14,
+          color: AppColors.textTertiary, // Lighter hint color
         ),
         errorStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          fontWeight: FontWeight.w400, // Reduced from w600
           color: AppColors.error,
         ),
       ),
 
-      // Data table theme - Modern table style
+      // Data table theme - Minimal, clean tables
       dataTableTheme: DataTableThemeData(
         headingRowColor: WidgetStateProperty.all(
-          AppColors.primaryContainer.withOpacity(0.5),
+          AppColors.surfaceVariant, // Subtle grey, not colored
         ),
         dataRowColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.hovered)) {
-            return AppColors.surfaceVariant;
+            return AppColors.hover; // Very subtle hover
           }
           if (states.contains(WidgetState.selected)) {
-            return AppColors.primaryContainer.withOpacity(0.3);
+            return AppColors.primaryContainer.withOpacity(0.15); // Reduced from 0.3
           }
           return null;
         }),
         headingTextStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: AppColors.primary,
-          letterSpacing: 0.5,
+          fontSize: 13,
+          fontWeight: FontWeight.w600, // Reduced from w800
+          color: AppColors.textPrimary, // Dark text, not colored
+          letterSpacing: 0.3,
         ),
         dataTextStyle: const TextStyle(
           fontSize: 14,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w400, // Reduced from w500
           color: AppColors.textPrimary,
+          height: 1.5,
         ),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 1),
+          borderRadius: BorderRadius.circular(8), // Reduced from 12
         ),
       ),
 
-      // Chip theme - Vibrant chips
+      // Chip theme - Subtle, professional chips
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primaryContainer,
+        backgroundColor: AppColors.surfaceVariant,
         selectedColor: AppColors.primary,
         labelStyle: const TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
-          letterSpacing: 0.3,
+          fontWeight: FontWeight.w500, // Reduced from w700
+          color: AppColors.textPrimary,
+          letterSpacing: 0.1,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        elevation: 1,
+        side: const BorderSide(color: AppColors.border, width: 1),
+        elevation: 0, // Flat
       ),
 
-      // Dialog theme - Modern dialogs
+      // Dialog theme - Clean, minimal elevation
       dialogTheme: DialogThemeData(
-        elevation: 8,
-        shadowColor: AppColors.shadowHeavy,
+        elevation: 2, // Reduced from 8
+        shadowColor: AppColors.shadow,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16), // Reduced from 24
         ),
         titleTextStyle: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          fontWeight: FontWeight.w600, // Reduced from w800
           color: AppColors.textPrimary,
-          letterSpacing: 0.5,
+          letterSpacing: -0.2,
         ),
         contentTextStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+          fontSize: 15,
+          fontWeight: FontWeight.w400, // Reduced from w500
           color: AppColors.textSecondary,
-          height: 1.5,
+          height: 1.6, // Increased from 1.5 for better readability
         ),
       ),
 
       // Divider theme
       dividerTheme: const DividerThemeData(
         color: AppColors.border,
-        thickness: 1.5,
-        space: 20,
+        thickness: 1,
+        space: 16,
       ),
 
-      // Tab bar theme - Modern tabs
+      // Tab bar theme - Minimal, clean tabs
       tabBarTheme: TabBarThemeData(
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
         indicatorSize: TabBarIndicatorSize.label,
         indicator: const UnderlineTabIndicator(
-          borderSide: BorderSide(color: AppColors.primary, width: 3),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
+          borderSide: BorderSide(color: AppColors.primary, width: 2), // Reduced from 3
+          borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
         ),
         labelStyle: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.5,
+          fontSize: 14,
+          fontWeight: FontWeight.w600, // Reduced from w800
+          letterSpacing: 0.1,
         ),
         unselectedLabelStyle: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          fontWeight: FontWeight.w500, // Reduced from w600
         ),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 20),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
 
-      // Progress indicator theme - Vibrant progress
+      // Progress indicator theme
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.primary,
         linearTrackColor: AppColors.primaryContainer,
@@ -269,14 +280,14 @@ class AppTheme {
         backgroundColor: AppColors.textPrimary,
         contentTextStyle: const TextStyle(
           color: AppColors.textOnPrimary,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          fontWeight: FontWeight.w400, // Reduced from w600
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8), // Reduced from 12
         ),
-        elevation: 4,
+        elevation: 2, // Reduced from 4
       ),
 
       // Bottom navigation bar theme
@@ -284,111 +295,122 @@ class AppTheme {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
         selectedLabelStyle: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+          fontSize: 12,
+          fontWeight: FontWeight.w600, // Reduced from w700
         ),
         unselectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          fontWeight: FontWeight.w500, // Reduced from w600
         ),
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 0, // Flat with border instead
       ),
 
-      // Text theme - Modern typography
+      // Text theme - Professional, readable typography
       textTheme: const TextTheme(
+        // Display styles - for large headlines
         displayLarge: TextStyle(
-          fontSize: 34,
-          fontWeight: FontWeight.w900,
+          fontSize: 32,
+          fontWeight: FontWeight.w700, // Reduced from w900
           color: AppColors.textPrimary,
-          letterSpacing: -0.5,
+          letterSpacing: -0.8,
           height: 1.2,
         ),
         displayMedium: TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600, // Reduced from w800
           color: AppColors.textPrimary,
-          letterSpacing: 0,
+          letterSpacing: -0.4,
           height: 1.3,
         ),
         displaySmall: TextStyle(
           fontSize: 24,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Reduced from w700
           color: AppColors.textPrimary,
-          letterSpacing: 0,
+          letterSpacing: -0.3,
           height: 1.3,
         ),
+        // Headlines - for section headers
         headlineLarge: TextStyle(
           fontSize: 22,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600, // Reduced from w800
           color: AppColors.textPrimary,
-          letterSpacing: 0.25,
+          letterSpacing: -0.2,
+          height: 1.4,
         ),
         headlineMedium: TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Same weight
           color: AppColors.textPrimary,
-          letterSpacing: 0.25,
+          letterSpacing: -0.2,
+          height: 1.4,
         ),
         headlineSmall: TextStyle(
           fontSize: 18,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Same weight
           color: AppColors.textPrimary,
-          letterSpacing: 0.15,
+          letterSpacing: 0,
+          height: 1.4,
         ),
+        // Titles - for cards and components
         titleLarge: TextStyle(
           fontSize: 18,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Same weight
           color: AppColors.textPrimary,
-          letterSpacing: 0.15,
+          letterSpacing: 0,
+          height: 1.4,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Same weight
           color: AppColors.textPrimary,
-          letterSpacing: 0.15,
+          letterSpacing: 0,
+          height: 1.4,
         ),
         titleSmall: TextStyle(
           fontSize: 14,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600, // Same weight
+          color: AppColors.textPrimary,
+          letterSpacing: 0,
+          height: 1.4,
+        ),
+        // Body text - for content
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w400, // Reduced from w500
+          color: AppColors.textPrimary,
+          height: 1.6, // Increased for better readability
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w400, // Reduced from w500
+          color: AppColors.textPrimary,
+          height: 1.6, // Increased
+        ),
+        bodySmall: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400, // Reduced from w500
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
+        // Labels - for UI elements
+        labelLarge: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500, // Reduced from w700
           color: AppColors.textPrimary,
           letterSpacing: 0.1,
         ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          height: 1.5,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-          height: 1.5,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
-          height: 1.4,
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          letterSpacing: 0.5,
-        ),
         labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          fontWeight: FontWeight.w500, // Reduced from w700
           color: AppColors.textSecondary,
-          letterSpacing: 0.5,
+          letterSpacing: 0.1,
         ),
         labelSmall: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textSecondary,
-          letterSpacing: 0.5,
+          fontSize: 12,
+          fontWeight: FontWeight.w500, // Reduced from w700
+          color: AppColors.textTertiary,
+          letterSpacing: 0.1,
         ),
       ),
 

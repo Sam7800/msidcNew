@@ -63,19 +63,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-        ),
+        color: AppColors.background,
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 450),
               child: Card(
-                elevation: 8,
-                shadowColor: AppColors.shadowHeavy,
+                elevation: 2,
+                shadowColor: AppColors.shadow,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(40),
@@ -88,8 +90,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Container(
                           width: 100,
                           height: 100,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.vibrantGradient,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -105,11 +107,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Text(
                           Constants.appName,
                           style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
+                              .textTheme.headlineLarge
                               ?.copyWith(
                                 color: AppColors.primary,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w600,
                               ),
                         ),
 

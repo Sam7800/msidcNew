@@ -48,51 +48,80 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: categoryColor,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(49),
+          child: Column(
+            children: [
+              Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [categoryColor.withOpacity(0.3), categoryColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+              ),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: categoryColor,
+                indicatorWeight: 2,
+                labelColor: categoryColor,
+                unselectedLabelColor: AppColors.textSecondary,
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.document_scanner, size: 20),
+                    text: 'DPR',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.work, size: 20),
+                    text: 'Work',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.analytics, size: 20),
+                    text: 'Monitoring',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.edit_document, size: 20),
+                    text: 'Work Entry',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               widget.project.name,
-              style: const TextStyle(fontSize: 18),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             Text(
               '#${widget.project.srNo} • ${widget.project.categoryName ?? 'Unknown'}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
+                color: categoryColor,
               ),
-            ),
-          ],
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.document_scanner),
-              text: 'DPR',
-            ),
-            Tab(
-              icon: Icon(Icons.work),
-              text: 'Work',
-            ),
-            Tab(
-              icon: Icon(Icons.analytics),
-              text: 'Monitoring',
-            ),
-            Tab(
-              icon: Icon(Icons.edit_document),
-              text: 'Work Entry',
             ),
           ],
         ),
@@ -104,13 +133,10 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  categoryColor.withOpacity(0.1),
-                  categoryColor.withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              color: AppColors.surface,
+              border: Border(
+                left: BorderSide(color: categoryColor, width: 4),
+                bottom: const BorderSide(color: AppColors.border, width: 1),
               ),
             ),
             child: Row(

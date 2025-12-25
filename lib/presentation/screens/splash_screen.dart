@@ -144,7 +144,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.shadowHeavy,
+                          color: AppColors.shadowMedium,
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),

@@ -83,15 +83,33 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: categoryColor,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 3,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [categoryColor.withOpacity(0.3), categoryColor],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+            ),
+          ),
+        ),
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search projects...',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  hintStyle: TextStyle(color: AppColors.textTertiary),
                   border: InputBorder.none,
                 ),
                 onChanged: _handleSearch,
@@ -101,13 +119,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 children: [
                   const Text(
                     'Projects',
-                    style: TextStyle(fontSize: 20),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   Text(
                     widget.category.name,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
+                      color: categoryColor,
                     ),
                   ),
                 ],
@@ -277,7 +300,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 }
 
 /// Project Card Widget
-class _ProjectCard extends StatelessWidget {
+class _ProjectCard extends StatefulWidget {
   final Project project;
   final Color categoryColor;
   final VoidCallback onTap;
@@ -289,94 +312,131 @@ class _ProjectCard extends StatelessWidget {
   });
 
   @override
+  State<_ProjectCard> createState() => _ProjectCardState();
+}
+
+class _ProjectCardState extends State<_ProjectCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: categoryColor.withOpacity(0.3),
-              width: 1.5,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border(
+            left: BorderSide(
+              color: widget.categoryColor,
+              width: _isHovered ? 4 : 3,
             ),
+            top: BorderSide(color: AppColors.border, width: 1),
+            right: BorderSide(color: AppColors.border, width: 1),
+            bottom: BorderSide(color: AppColors.border, width: 1),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Serial Number Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: categoryColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '#${project.srNo}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: widget.categoryColor.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-              ),
-
-              // Project Name
-              Expanded(
-                child: Center(
-                  child: Text(
-                    project.name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                          fontSize: 12,
-                        ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-
-              // View Details Button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: onTap,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: categoryColor, width: 1),
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    minimumSize: const Size(0, 28),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'View',
-                        style: TextStyle(
-                          color: categoryColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Serial Number Badge - Minimal design
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.categoryColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: widget.categoryColor.withOpacity(0.3),
+                        width: 1,
                       ),
-                      const SizedBox(width: 3),
-                      Icon(
-                        Icons.arrow_forward,
-                        size: 12,
-                        color: categoryColor,
+                    ),
+                    child: Text(
+                      '#${widget.project.srNo}',
+                      style: TextStyle(
+                        color: widget.categoryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
-                    ],
+                    ),
                   ),
-                ),
+
+                  const SizedBox(height: 12),
+
+                  // Project Name
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        widget.project.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // View Details Button - Cleaner design
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: widget.onTap,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppColors.border, width: 1),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        minimumSize: const Size(0, 32),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: TextStyle(
+                              color: widget.categoryColor,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 14,
+                            color: widget.categoryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
