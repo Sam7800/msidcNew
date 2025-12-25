@@ -115,35 +115,50 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      elevation: 2,
+      shadowColor: AppColors.shadow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(
+          color: AppColors.border,
+          width: 1,
+        ),
+      ),
       child: Container(
         width: 500,
         constraints: const BoxConstraints(maxHeight: 600),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Header - Flat with border-bottom
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _parseColor(_selectedColor),
-                    _parseColor(_selectedColor).withOpacity(0.7),
-                  ],
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 20),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
+                  // Icon preview - border-based
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(12),
+                      color: _parseColor(_selectedColor).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _parseColor(_selectedColor).withOpacity(0.3),
+                        width: 1,
+                      ),
                     ),
                     child: Icon(
                       _iconOptions.firstWhere(
@@ -151,7 +166,7 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                         orElse: () => _iconOptions[0],
                       )['icon'] as IconData,
                       color: _parseColor(_selectedColor),
-                      size: 28,
+                      size: 24,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -159,14 +174,16 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                     child: Text(
                       'Create New Category',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: const Icon(Icons.close, size: 20),
+                    color: AppColors.textSecondary,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -176,7 +193,7 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
             // Form
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -185,11 +202,27 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                       // Name field
                       TextFormField(
                         controller: _nameController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Category Name *',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                           hintText: 'Enter category name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.label),
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: Icon(Icons.label, size: 20),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -202,16 +235,32 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                         },
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       // Description field
                       TextFormField(
                         controller: _descriptionController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Description (Optional)',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                           hintText: 'Enter category description',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: Icon(Icons.description, size: 20),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                         maxLines: 2,
                       ),
@@ -222,46 +271,49 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                       const Text(
                         'Color',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 10,
+                        runSpacing: 10,
                         children: _colorOptions.map((color) {
                           final isSelected = _selectedColor == color['hex'];
+                          final colorValue = _parseColor(color['hex']!);
                           return InkWell(
                             onTap: () {
                               setState(() => _selectedColor = color['hex']!);
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
-                                color: _parseColor(color['hex']!),
+                                color: colorValue.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(8),
-                                border: isSelected
-                                    ? Border.all(
-                                        color: Colors.black,
-                                        width: 3,
-                                      )
+                                border: Border.all(
+                                  color: colorValue,
+                                  width: isSelected ? 2.5 : 1.5,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: colorValue.withOpacity(0.15),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
                                     : null,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _parseColor(color['hex']!).withOpacity(0.4),
-                                    blurRadius: isSelected ? 8 : 4,
-                                    spreadRadius: isSelected ? 2 : 0,
-                                  ),
-                                ],
                               ),
                               child: isSelected
-                                  ? const Icon(
+                                  ? Icon(
                                       Icons.check,
-                                      color: Colors.white,
-                                      size: 24,
+                                      color: colorValue,
+                                      size: 20,
                                     )
                                   : null,
                             ),
@@ -275,42 +327,45 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                       const Text(
                         'Icon',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 10,
+                        runSpacing: 10,
                         children: _iconOptions.map((iconOption) {
                           final isSelected = _selectedIcon == iconOption['name'];
+                          final selectedColor = _parseColor(_selectedColor);
                           return InkWell(
                             onTap: () {
                               setState(() => _selectedIcon = iconOption['name'] as String);
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? _parseColor(_selectedColor).withOpacity(0.2)
-                                    : Colors.grey[200],
+                                    ? selectedColor.withOpacity(0.12)
+                                    : AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
-                                border: isSelected
-                                    ? Border.all(
-                                        color: _parseColor(_selectedColor),
-                                        width: 2,
-                                      )
-                                    : null,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? selectedColor
+                                      : AppColors.border,
+                                  width: isSelected ? 2 : 1,
+                                ),
                               ),
                               child: Icon(
                                 iconOption['icon'] as IconData,
                                 color: isSelected
-                                    ? _parseColor(_selectedColor)
-                                    : Colors.grey[600],
-                                size: 24,
+                                    ? selectedColor
+                                    : AppColors.textSecondary,
+                                size: 20,
                               ),
                             ),
                           );
@@ -324,12 +379,18 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
 
             // Actions
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
               ),
               child: Row(
@@ -337,7 +398,20 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                 children: [
                   TextButton(
                     onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -345,9 +419,14 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _parseColor(_selectedColor),
                       foregroundColor: Colors.white,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isSubmitting
@@ -359,7 +438,13 @@ class _CreateCategoryDialogState extends ConsumerState<CreateCategoryDialog> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text('Create Category'),
+                        : const Text(
+                            'Create Category',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ],
               ),
