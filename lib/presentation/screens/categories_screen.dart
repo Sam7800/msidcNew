@@ -27,6 +27,9 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +37,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     Future.microtask(() {
       ref.read(projectProvider.notifier).loadAllProjects();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _handleImport() async {
@@ -668,107 +677,181 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final categoriesWithCountsAsync = ref.watch(categoriesWithCountsProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 56,
+        automaticallyImplyLeading: false, // No back button on main screen
+        title: Row(
+          children: [
+            // App icon - functional, not decorative
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.engineering,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // App name - left aligned, desktop style
+            Text(
+              Constants.appName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          // Properly sized action icons (24px)
+          IconButton(
+            icon: const Icon(Icons.create_new_folder, size: 24),
+            tooltip: 'Create Category',
+            onPressed: _handleCreateCategory,
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, size: 24),
+            tooltip: 'Generate Sample Data',
+            onPressed: _handleGenerateSampleData,
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.upload_file, size: 24),
+            tooltip: 'Import from Excel',
+            onPressed: _handleImport,
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.download, size: 24),
+            tooltip: 'Export to Excel',
+            onPressed: _handleExport,
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 24),
+            tooltip: Constants.tooltipRefresh,
+            onPressed: () {
+              ref.read(projectProvider.notifier).loadAllProjects();
+              ref.refresh(projectCountByCategoryProvider);
+            },
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 24),
+            tooltip: Constants.tooltipLogout,
+            onPressed: _handleLogout,
+            color: AppColors.textPrimary,
+          ),
+          const SizedBox(width: 8), // Right padding
+        ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: AppColors.border),
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
-          // App Bar - Clean, minimal with border bottom
-          SliverAppBar(
-            floating: true,
-            pinned: true,
-            expandedHeight: 140,
-            backgroundColor: AppColors.surface,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                Constants.appName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600, // Reduced from w900
-                  letterSpacing: -0.2, // Tighter, modern
-                  color: AppColors.textPrimary, // Dark text, not white
-                ),
-              ),
-              background: Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.border,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.engineering,
-                    size: 48, // Reduced from 60
-                    color: AppColors.primary, // Dark grey, not white
-                  ),
-                ),
-              ),
-            ),
-            iconTheme: const IconThemeData(
-              color: AppColors.textPrimary, // Dark icons to match text
-              size: 22,
-            ),
-            actions: [
-                IconButton(
-                  icon: const Icon(Icons.create_new_folder),
-                  tooltip: 'Create Category',
-                  onPressed: _handleCreateCategory,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: 'Generate Sample Data',
-                  onPressed: _handleGenerateSampleData,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.upload_file),
-                  tooltip: 'Import from Excel',
-                  onPressed: _handleImport,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.download),
-                  tooltip: 'Export to Excel',
-                  onPressed: _handleExport,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: Constants.tooltipRefresh,
-                  onPressed: () {
-                    ref.read(projectProvider.notifier).loadAllProjects();
-                    ref.refresh(projectCountByCategoryProvider);
-                  },
-                ),
-              IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: Constants.tooltipLogout,
-                onPressed: _handleLogout,
-              ),
-            ],
-          ),
 
-          // Header
+          // Compact header with search - Claude.com style
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 12), // More breathing room
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              child: Row(
                 children: [
-                  Text(
-                    'Project Categories',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600, // Reduced from w900
+                  // Title and subtitle - compact, left-aligned
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Categories',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                              ),
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Browse and manage project categories',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Select a category to view projects',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
+                  const SizedBox(width: 24),
+                  // Search bar - integrated into header row
+                  SizedBox(
+                    width: 320,
+                    height: 40,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1,
                         ),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                          });
+                        },
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search categories...',
+                          hintStyle: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: AppColors.textSecondary,
+                          ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    size: 18,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -778,15 +861,54 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           // Categories Grid
           categoriesWithCountsAsync.when(
             data: (categoriesWithCounts) {
-              final categories = categoriesWithCounts.keys.toList();
+              // Filter categories based on search query
+              final allCategories = categoriesWithCounts.keys.toList();
+              final categories = _searchQuery.isEmpty
+                  ? allCategories
+                  : allCategories
+                      .where((cat) => cat.name.toLowerCase().contains(_searchQuery))
+                      .toList();
+
+              // Show empty state if no categories match search
+              if (categories.isEmpty) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: AppColors.textTertiary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No categories found',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try a different search term',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), // More breathing room
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    childAspectRatio: 1.0,
-                    crossAxisSpacing: 20, // Increased from 12
-                    mainAxisSpacing: 20, // Increased from 12
+                    crossAxisCount: 5, // Increased from 4 to make cards smaller
+                    childAspectRatio: 1.1, // Slightly taller than wide for better proportions
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -880,19 +1002,25 @@ class _CategoryCardState extends State<_CategoryCard> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isHovered ? categoryColor : AppColors.border,
-            width: _isHovered ? 2 : 1,
+            color: categoryColor, // Always use category color
+            width: _isHovered ? 2 : 1.5, // Thicker on hover
           ),
-          // Subtle shadow
+          // Subtle shadow with category color
           boxShadow: _isHovered
               ? [
                   BoxShadow(
-                    color: categoryColor.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: categoryColor.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: categoryColor.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,
@@ -900,38 +1028,38 @@ class _CategoryCardState extends State<_CategoryCard> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16), // Reduced from 20
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Icon with subtle colored background
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: 56, // Reduced from 64
+                    height: 56, // Reduced from 64
                     decoration: BoxDecoration(
-                      color: AppColors.getCategoryBackgroundLight(widget.category.name),
-                      borderRadius: BorderRadius.circular(12),
+                      color: categoryColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: AppColors.getCategoryBorderColor(widget.category.name),
+                        color: categoryColor.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
                     child: Icon(
                       widget.category.getIcon(),
-                      size: 32,
+                      size: 28, // Reduced from 32
                       color: categoryColor,
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12), // Reduced from 16
 
                   // Category Name
                   Text(
                     widget.category.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600, // Reduced from w800
-                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14, // Reduced from 15
                         ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -943,14 +1071,14 @@ class _CategoryCardState extends State<_CategoryCard> {
                   // Project Count Badge - Minimal design
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 10, // Reduced from 12
+                      vertical: 5, // Reduced from 6
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.getCategoryBackgroundLight(widget.category.name),
-                      borderRadius: BorderRadius.circular(20),
+                      color: categoryColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.getCategoryBorderColor(widget.category.name),
+                        color: categoryColor.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
@@ -960,24 +1088,16 @@ class _CategoryCardState extends State<_CategoryCard> {
                       children: [
                         Icon(
                           Icons.folder_outlined,
-                          size: 14,
+                          size: 12, // Reduced from 14
                           color: categoryColor,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4), // Reduced from 6
                         Text(
                           '${widget.projectCount}',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600, // Reduced from w800
+                            fontSize: 12, // Reduced from 13
+                            fontWeight: FontWeight.w600,
                             color: categoryColor,
-                          ),
-                        ),
-                        Text(
-                          ' projects',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
