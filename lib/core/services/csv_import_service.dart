@@ -149,7 +149,7 @@ class CsvImportService {
         'sr_no': srNo,
         'name': projectName,
         'category_id': categoryId,
-        'broad_scope': broadScope.isEmpty ? null : broadScope,
+        'broad_scope': (broadScope == null || broadScope.isEmpty) ? null : broadScope,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };

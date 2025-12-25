@@ -1,0 +1,1 @@
+ /Users/kedarkhopade/Desktop/MIDC/msidcNew/.dart_tool/flutter_build/d26f068eee6be8c643167a835cc6cd9c/dart_build_result.json:  /Users/kedarkhopade/Desktop/MIDC/msidcNew/.dart_tool/package_config.json /Users/kedarkhopade/Desktop/MIDC/msidcNew/pubspec.yaml /opt/homebrew/share/flutter/bin/cache/dart-sdk/version

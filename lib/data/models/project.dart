@@ -70,8 +70,6 @@ class Project {
       'name': name,
       'category_id': categoryId,
       'broad_scope': broadScope,
-      'location': location,
-      'status': status,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
