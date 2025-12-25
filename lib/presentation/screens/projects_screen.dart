@@ -25,7 +25,7 @@ class ProjectsScreen extends ConsumerStatefulWidget {
 
 class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   final _searchController = TextEditingController();
-  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -44,18 +44,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _handleSearch(String query) {
-    if (query.isEmpty) {
-      if (widget.category.id != null) {
-        ref
-            .read(projectProvider.notifier)
-            .loadProjectsByCategoryId(widget.category.id!);
-      }
-    } else {
-      ref.read(projectProvider.notifier).searchProjects(query);
-    }
   }
 
   Future<void> _handleCreateProject() async {
@@ -86,11 +74,87 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(
+        toolbarHeight: 56,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 24),
           color: AppColors.textPrimary,
+          onPressed: () => Navigator.pop(context),
         ),
+        title: Row(
+          children: [
+            // Category icon - small, functional
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: categoryColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: categoryColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                widget.category.getIcon(),
+                size: 18,
+                color: categoryColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Category name - left aligned
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.category.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Projects',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: categoryColor,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          // Properly sized action icons (24px)
+          IconButton(
+            icon: const Icon(Icons.add, size: 24),
+            tooltip: 'Create Project',
+            onPressed: _handleCreateProject,
+            color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 24),
+            tooltip: Constants.tooltipRefresh,
+            onPressed: () {
+              if (widget.category.id != null) {
+                ref
+                    .read(projectProvider.notifier)
+                    .loadProjectsByCategoryId(widget.category.id!);
+              }
+            },
+            color: AppColors.textPrimary,
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
+          preferredSize: const Size.fromHeight(3),
           child: Container(
             height: 3,
             decoration: BoxDecoration(
@@ -102,73 +166,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             ),
           ),
         ),
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Search projects...',
-                  hintStyle: TextStyle(color: AppColors.textTertiary),
-                  border: InputBorder.none,
-                ),
-                onChanged: _handleSearch,
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Projects',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    widget.category.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: categoryColor,
-                    ),
-                  ),
-                ],
-              ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Create Project',
-            onPressed: _handleCreateProject,
-          ),
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) {
-                  _searchController.clear();
-                  if (widget.category.id != null) {
-                    ref
-                        .read(projectProvider.notifier)
-                        .loadProjectsByCategoryId(widget.category.id!);
-                  }
-                }
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: Constants.tooltipRefresh,
-            onPressed: () {
-              if (widget.category.id != null) {
-                ref
-                    .read(projectProvider.notifier)
-                    .loadProjectsByCategoryId(widget.category.id!);
-              }
-            },
-          ),
-        ],
       ),
       body: projectState.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -202,99 +199,211 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     ],
                   ),
                 )
-              : projectState.projects.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              : Column(
+                  children: [
+                    // Compact header with search - Claude.com style
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                      child: Row(
                         children: [
-                          Icon(
-                            Icons.folder_open,
-                            size: 80,
-                            color: AppColors.textDisabled,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No projects found',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  color: AppColors.textSecondary,
+                          // Title and count - compact
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Projects',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 18,
+                                      ),
                                 ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${projectState.projects.where((p) => _searchQuery.isEmpty || p.name.toLowerCase().contains(_searchQuery)).length} projects in this category',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _isSearching
-                                ? 'Try a different search term'
-                                : 'No projects in this category yet',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textDisabled,
-                                    ),
+                          const SizedBox(width: 24),
+                          // Search bar - integrated
+                          SizedBox(
+                            width: 320,
+                            height: 40,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _searchQuery = value.toLowerCase();
+                                  });
+                                },
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Search projects...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    size: 20,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  suffixIcon: _searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(
+                                            Icons.clear,
+                                            size: 18,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() {
+                                              _searchQuery = '';
+                                            });
+                                          },
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    )
-                  : Column(
-                      children: [
-                        // Header with count
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          color: AppColors.surfaceVariant,
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.folder,
-                                color: categoryColor,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${projectState.projects.length} Projects',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    ),
 
-                        // Projects Grid
-                        Expanded(
-                          child: GridView.builder(
-                            padding: const EdgeInsets.all(12),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              childAspectRatio: 1.4,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            itemCount: projectState.projects.length,
-                            itemBuilder: (context, index) {
-                              final project = projectState.projects[index];
-                              return _ProjectCard(
-                                project: project,
-                                categoryColor: categoryColor,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ProjectDetailScreen(
-                                        project: project,
-                                      ),
+                    // Projects Grid
+                    Expanded(
+                      child: projectState.projects.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.folder_open,
+                                    size: 64,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No projects found',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No projects in this category yet',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: AppColors.textTertiary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Builder(
+                              builder: (context) {
+                                // Filter projects based on search
+                                final filteredProjects = projectState.projects
+                                    .where((p) =>
+                                        _searchQuery.isEmpty ||
+                                        p.name.toLowerCase().contains(_searchQuery))
+                                    .toList();
+
+                                // Show empty state if search has no results
+                                if (filteredProjects.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off,
+                                          size: 64,
+                                          color: AppColors.textTertiary,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No projects found',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Try a different search term',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: AppColors.textTertiary,
+                                              ),
+                                        ),
+                                      ],
                                     ),
                                   );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                                }
+
+                                return GridView.builder(
+                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 5, // Same as categories
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                    childAspectRatio: 0.85,
+                                  ),
+                                  itemCount: filteredProjects.length,
+                                  itemBuilder: (context, index) {
+                                    final project = filteredProjects[index];
+                                    return _ProjectCard(
+                                      project: project,
+                                      categoryColor: categoryColor,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ProjectDetailScreen(
+                                              project: project,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                     ),
+                  ],
+                ),
     );
   }
 }
@@ -327,24 +436,27 @@ class _ProjectCardState extends State<_ProjectCard> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border(
-            left: BorderSide(
-              color: widget.categoryColor,
-              width: _isHovered ? 4 : 3,
-            ),
-            top: BorderSide(color: AppColors.border, width: 1),
-            right: BorderSide(color: AppColors.border, width: 1),
-            bottom: BorderSide(color: AppColors.border, width: 1),
+          // All borders in category color - same as category card
+          border: Border.all(
+            color: widget.categoryColor,
+            width: _isHovered ? 2 : 1.5,
           ),
+          // Shadow always present - same as category card
           boxShadow: _isHovered
               ? [
                   BoxShadow(
-                    color: widget.categoryColor.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: widget.categoryColor.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: widget.categoryColor.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,
@@ -352,86 +464,84 @@ class _ProjectCardState extends State<_ProjectCard> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16), // Same as category card
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Serial Number Badge - Minimal design
+                  // Serial Number Badge - exactly like category card icon
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    width: 56, // Same as category icon
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: widget.categoryColor.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(6),
+                      color: widget.categoryColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: widget.categoryColor.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
-                    child: Text(
-                      '#${widget.project.srNo}',
-                      style: TextStyle(
-                        color: widget.categoryColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Project Name
-                  Expanded(
                     child: Center(
                       child: Text(
-                        widget.project.name,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                            ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                        '#${widget.project.srNo}',
+                        style: TextStyle(
+                          color: widget.categoryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18, // Larger, more visible
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 12), // Same spacing as category
 
-                  // View Details Button - Cleaner design
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: widget.onTap,
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.border, width: 1),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        minimumSize: const Size(0, 32),
+                  // Project Name - same styling as category name
+                  Text(
+                    widget.project.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14, // Same as category name
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const Spacer(),
+
+                  // Action badge - similar to category project count
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.categoryColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: widget.categoryColor.withOpacity(0.3),
+                        width: 1,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'View Details',
-                            style: TextStyle(
-                              color: widget.categoryColor,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 14,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.arrow_forward,
+                          size: 12,
+                          color: widget.categoryColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'View',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                             color: widget.categoryColor,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
