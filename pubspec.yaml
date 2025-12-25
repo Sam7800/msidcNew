@@ -42,6 +42,7 @@ dependencies:
   # Database
   sqflite: ^2.3.3+2
   sqflite_common_ffi: ^2.3.3  # For desktop support
+  sqlite3_flutter_libs: ^0.5.24  # Native SQLite3 libraries for all platforms
   path: ^1.9.0
   path_provider: ^2.1.4
 

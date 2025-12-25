@@ -758,6 +758,12 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "sqlite3_flutter_libs",
+      "rootUri": "file:///Users/kedarkhopade/.pub-cache/hosted/pub.dev/sqlite3_flutter_libs-0.5.41",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "stack_trace",
       "rootUri": "file:///Users/kedarkhopade/.pub-cache/hosted/pub.dev/stack_trace-1.12.1",
       "packageUri": "lib/",

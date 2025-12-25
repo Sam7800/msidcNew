@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+import '../services/logger_service.dart';
 
 /// DatabaseHelper - Singleton class for SQLite database management
 ///
@@ -12,48 +14,70 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  final LoggerService _logger = LoggerService.instance;
 
   DatabaseHelper._init();
 
   /// Get database instance (creates if not exists)
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null) {
+      await _logger.database('GET', 'Returning existing database instance');
+      return _database!;
+    }
+    await _logger.database('GET', 'Initializing new database instance');
     _database = await _initDB('msidc.db');
+    await _logger.database('GET', 'Database instance created successfully');
     return _database!;
   }
 
   /// Initialize database
   Future<Database> _initDB(String filePath) async {
-    // Initialize FFI for desktop platforms
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+    try {
+      await _logger.database('INIT', 'Starting database initialization for: $filePath');
+
+      // Initialize FFI for desktop platforms
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        await _logger.database('INIT', 'Initializing SQLite FFI for desktop platform');
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      }
+
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, filePath);
+      await _logger.database('INIT', 'Database path: $path');
+
+      final db = await openDatabase(
+        path,
+        version: 2,
+        onCreate: _createDB,
+        onConfigure: _onConfigure,
+        onUpgrade: _upgradeDB,
+      );
+
+      await _logger.database('INIT', 'Database opened successfully at version ${await db.getVersion()}');
+      return db;
+    } catch (e, stackTrace) {
+      await _logger.database('INIT', 'Failed to initialize database', error: e, stackTrace: stackTrace);
+      rethrow;
     }
-
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-
-    return await openDatabase(
-      path,
-      version: 2,
-      onCreate: _createDB,
-      onConfigure: _onConfigure,
-      onUpgrade: _upgradeDB,
-    );
   }
 
   /// Enable foreign keys
   Future<void> _onConfigure(Database db) async {
+    await _logger.database('CONFIGURE', 'Enabling foreign key constraints');
     await db.execute('PRAGMA foreign_keys = ON');
+    await _logger.database('CONFIGURE', 'Foreign key constraints enabled');
   }
 
   /// Handle database upgrades
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    print('DatabaseHelper: Upgrading from v$oldVersion to v$newVersion');
+    await _logger.database('UPGRADE', 'Upgrading database from v$oldVersion to v$newVersion');
 
     if (oldVersion < 2) {
       await _migrateV1ToV2(db);
     }
+
+    await _logger.database('UPGRADE', 'Database upgrade completed successfully');
 
     // Future migrations:
     // if (oldVersion < 3) { await _migrateV2ToV3(db); }
@@ -63,11 +87,11 @@ class DatabaseHelper {
   /// - Creates categories table
   /// - Migrates projects table from category (TEXT) to category_id (INTEGER FK)
   Future<void> _migrateV1ToV2(Database db) async {
-    print('DatabaseHelper: Starting v1→v2 migration...');
+    await _logger.database('MIGRATION', 'Starting v1→v2 migration');
 
     try {
       // Step 1: Create categories table
-      print('  Creating categories table...');
+      await _logger.database('MIGRATION', 'Creating categories table');
       await db.execute('''
         CREATE TABLE categories (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,7 +123,7 @@ class DatabaseHelper {
       ''');
 
       // Step 2: Insert default 5 categories
-      print('  Inserting default categories...');
+      await _logger.database('MIGRATION', 'Inserting default categories');
       final categoryInserts = [
         "INSERT INTO categories (name, description, color_hex, icon_name, display_order) VALUES ('Nashik Kumbhmela', '8 projects for Nashik Kumbhmela development', '#0061FF', 'festival', 1)",
         "INSERT INTO categories (name, description, color_hex, icon_name, display_order) VALUES ('HAM Projects', '2 HAM (Hybrid Annuity Model) projects', '#00E676', 'handshake', 2)",
@@ -113,7 +137,7 @@ class DatabaseHelper {
       }
 
       // Step 3: Create new projects table with category_id
-      print('  Creating new projects table structure...');
+      await _logger.database('MIGRATION', 'Creating new projects table structure');
       await db.execute('''
         CREATE TABLE projects_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,7 +153,7 @@ class DatabaseHelper {
       ''');
 
       // Step 4: Migrate data from old projects table to new one
-      print('  Migrating existing projects...');
+      await _logger.database('MIGRATION', 'Migrating existing projects data');
       await db.execute('''
         INSERT INTO projects_new (id, sr_no, name, category_id, broad_scope, created_at, updated_at)
         SELECT
@@ -145,22 +169,22 @@ class DatabaseHelper {
       ''');
 
       // Step 5: Drop old projects table
-      print('  Dropping old projects table...');
+      await _logger.database('MIGRATION', 'Dropping old projects table');
       await db.execute('DROP TABLE projects');
 
       // Step 6: Rename new table to projects
-      print('  Renaming new table...');
+      await _logger.database('MIGRATION', 'Renaming projects_new to projects');
       await db.execute('ALTER TABLE projects_new RENAME TO projects');
 
       // Step 7: Recreate indexes for projects table
-      print('  Recreating indexes...');
+      await _logger.database('MIGRATION', 'Recreating indexes for projects table');
       await db.execute(
           'CREATE INDEX idx_projects_category ON projects(category_id)');
       await db.execute('CREATE INDEX idx_projects_name ON projects(name)');
       await db.execute('CREATE INDEX idx_projects_sr_no ON projects(sr_no)');
 
       // Step 8: Recreate trigger for projects table
-      print('  Recreating trigger...');
+      await _logger.database('MIGRATION', 'Recreating trigger for projects table');
       await db.execute('''
         CREATE TRIGGER update_projects_timestamp
         AFTER UPDATE ON projects
@@ -169,17 +193,19 @@ class DatabaseHelper {
         END
       ''');
 
-      print('DatabaseHelper: v1→v2 migration completed successfully!');
+      await _logger.database('MIGRATION', 'v1→v2 migration completed successfully');
     } catch (e, stackTrace) {
-      print('DatabaseHelper: Migration error: $e');
-      print('DatabaseHelper: Stack trace: $stackTrace');
+      await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
 
   /// Create all tables and triggers
   Future<void> _createDB(Database db, int version) async {
+    await _logger.database('CREATE', 'Creating database schema version $version');
+
     // Table 1: Categories (new in v2)
+    await _logger.database('CREATE', 'Creating categories table');
     await db.execute('''
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -214,6 +240,7 @@ class DatabaseHelper {
     }
 
     // Table 2: Projects (updated in v2 to use category_id FK)
+    await _logger.database('CREATE', 'Creating projects table');
     await db.execute('''
       CREATE TABLE projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,7 +260,8 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_projects_name ON projects(name)');
     await db.execute('CREATE INDEX idx_projects_sr_no ON projects(sr_no)');
 
-    // Table 2: DPR Data
+    // Table 3: DPR Data
+    await _logger.database('CREATE', 'Creating dpr_data table');
     await db.execute('''
       CREATE TABLE dpr_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -266,7 +294,8 @@ class DatabaseHelper {
 
     await db.execute('CREATE INDEX idx_dpr_project ON dpr_data(project_id)');
 
-    // Table 3: Work Data
+    // Table 4: Work Data
+    await _logger.database('CREATE', 'Creating work_data table');
     await db.execute('''
       CREATE TABLE work_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,7 +323,8 @@ class DatabaseHelper {
 
     await db.execute('CREATE INDEX idx_work_project ON work_data(project_id)');
 
-    // Table 4: Monitoring Data
+    // Table 5: Monitoring Data
+    await _logger.database('CREATE', 'Creating monitoring_data table');
     await db.execute('''
       CREATE TABLE monitoring_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -334,7 +364,8 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_monitoring_agmnt_amount ON monitoring_data(agmnt_amount)');
 
-    // Table 5: Work Entry (84 dynamic fields stored as JSON)
+    // Table 6: Work Entry (84 dynamic fields stored as JSON)
+    await _logger.database('CREATE', 'Creating work_entry table');
     await db.execute('''
       CREATE TABLE work_entry (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -357,7 +388,8 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_work_entry_draft ON work_entry(is_draft)');
 
-    // Table 6: Import Logs
+    // Table 7: Import Logs
+    await _logger.database('CREATE', 'Creating import_logs table');
     await db.execute('''
       CREATE TABLE import_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -377,7 +409,8 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_import_logs_date ON import_logs(imported_at)');
 
-    // Table 7: Audit Log
+    // Table 8: Audit Log
+    await _logger.database('CREATE', 'Creating audit_log table');
     await db.execute('''
       CREATE TABLE audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -400,6 +433,8 @@ class DatabaseHelper {
 
     // Create triggers for auto-updating timestamps
     await _createTimestampTriggers(db);
+
+    await _logger.database('CREATE', 'Database schema created successfully');
   }
 
   /// Create triggers for auto-updating timestamps on UPDATE
@@ -461,15 +496,19 @@ class DatabaseHelper {
 
   /// Close database
   Future<void> close() async {
+    await _logger.database('CLOSE', 'Closing database connection');
     final db = await database;
     await db.close();
+    await _logger.database('CLOSE', 'Database connection closed');
   }
 
   /// Delete database (for testing)
   Future<void> deleteDB() async {
+    await _logger.database('DELETE', 'Deleting database');
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'msidc.db');
     await deleteDatabase(path);
     _database = null;
+    await _logger.database('DELETE', 'Database deleted successfully');
   }
 }

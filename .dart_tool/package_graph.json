@@ -23,6 +23,7 @@
         "shared_preferences",
         "sqflite",
         "sqflite_common_ffi",
+        "sqlite3_flutter_libs",
         "validators",
         "window_manager"
       ],
@@ -282,6 +283,13 @@
       "name": "path",
       "version": "1.9.1",
       "dependencies": []
+    },
+    {
+      "name": "sqlite3_flutter_libs",
+      "version": "0.5.41",
+      "dependencies": [
+        "flutter"
+      ]
     },
     {
       "name": "sqflite_common_ffi",

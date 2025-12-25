@@ -1,0 +1,55 @@
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+warning: Run script build phase 'Run Script' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Flutter Assemble' from project 'Runner')
+✓ Built build/macos/Build/Products/Debug/msidc.app
+2025-12-26 00:01:42.848 msidc[96510:8817713] Running with merged UI and platform thread. Experimental.
+Failed to foreground app; open returned 1
+Syncing files to device macOS...                                
+flutter: [32m[2025-12-26 00:01:48.166] [INFO] [LoggerService] Logger initialized successfully[0m
+flutter: [32m[2025-12-26 00:01:48.190] [INFO] [LoggerService] Log directory: /Users/kedarkhopade/Library/Containers/com.example.msidc/Data/Documents/msidc_logs[0m
+flutter: [32m[2025-12-26 00:01:48.211] [INFO] [LoggerService] App log: /Users/kedarkhopade/Library/Containers/com.example.msidc/Data/Documents/msidc_logs/app_2025-12-26.log[0m
+flutter: [32m[2025-12-26 00:01:48.232] [INFO] [LoggerService] Database log: /Users/kedarkhopade/Library/Containers/com.example.msidc/Data/Documents/msidc_logs/database_2025-12-26.log[0m
+flutter: [32m[2025-12-26 00:01:48.241] [INFO] [LoggerService] Error log: /Users/kedarkhopade/Library/Containers/com.example.msidc/Data/Documents/msidc_logs/errors_2025-12-26.log[0m
+flutter: [32m[2025-12-26 00:01:48.243] [INFO] [SplashScreen] Starting application initialization[0m
+flutter: [32m[2025-12-26 00:01:48.244] [INFO] [SplashScreen] Logger initialized[0m
+flutter: [32m[2025-12-26 00:01:48.245] [INFO] [SplashScreen] Initializing database[0m
+flutter: DB: [2025-12-26 00:01:48.246] [DB:GET] Initializing new database instance
+flutter: DB: [2025-12-26 00:01:48.247] [DB:INIT] Starting database initialization for: msidc.db
+flutter: DB: [2025-12-26 00:01:48.247] [DB:INIT] Initializing SQLite FFI for desktop platform
+flutter: *** sqflite warning ***
+
+You are changing sqflite default factory.
+Be aware of the potential side effects. Any library using sqflite
+will have this factory as the default for all operations.
+
+*** sqflite warning ***
+
+flutter: DB: [2025-12-26 00:01:48.264] [DB:INIT] Database path: /Users/kedarkhopade/Library/Containers/com.example.msidc/Data/.dart_tool/sqflite_common_ffi/databases/msidc.db
+flutter: DB: [2025-12-26 00:01:48.384] [DB:CONFIGURE] Enabling foreign key constraints
+flutter: DB: [2025-12-26 00:01:48.391] [DB:CONFIGURE] Foreign key constraints enabled
+flutter: DB: [2025-12-26 00:01:48.397] [DB:INIT] Database opened successfully at version 2
+flutter: DB: [2025-12-26 00:01:48.398] [DB:GET] Database instance created successfully
+flutter: [32m[2025-12-26 00:01:48.399] [INFO] [SplashScreen] Database initialized successfully[0m
+flutter: [32m[2025-12-26 00:01:50.403] [INFO] [SplashScreen] Checking authentication status[0m
+flutter: [32m[2025-12-26 00:01:50.414] [INFO] [SplashScreen] Authentication status: false[0m
+flutter: [32m[2025-12-26 00:01:50.417] [INFO] [SplashScreen] Navigating to Login Screen[0m
+Syncing files to device macOS...                                    6.0s
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:52067/cHjy67M_cPo=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:52067/cHjy67M_cPo=/devtools/?uri=ws://127.0.0.1:52067/cHjy67M_cPo=/ws
+flutter: DB: [2025-12-26 00:02:02.195] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:02.265] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:07.465] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:12.461] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:16.725] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:18.872] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:20.305] [DB:GET] Returning existing database instance
+flutter: DB: [2025-12-26 00:02:21.487] [DB:GET] Returning existing database instance
