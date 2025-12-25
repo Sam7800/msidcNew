@@ -2,7 +2,7 @@
   "assets": [
     {
       "encoding": {
-        "file": "/Users/kedarkhopade/Desktop/MIDC/msidcNew/.dart_tool/hooks_runner/shared/sqlite3/build/download-a3ab67a/libsqlite3.x64.macos.dylib",
+        "file": "/Users/shubham/Desktop/msidc/msidcNew/.dart_tool/hooks_runner/shared/sqlite3/build/download-4ef0357/libsqlite3.x64.macos.dylib",
         "id": "package:sqlite3/src/ffi/libsqlite3.g.dart",
         "link_mode": {
           "type": "dynamic_loading_bundle"
@@ -13,5 +13,5 @@
   ],
   "assets_for_linking": {},
   "status": "success",
-  "timestamp": "2025-12-26 00:01:44.000"
+  "timestamp": "2025-12-26 00:28:34.000"
 }
