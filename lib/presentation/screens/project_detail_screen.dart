@@ -84,43 +84,78 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                 ),
                 tabs: const [
                   Tab(
-                    icon: Icon(Icons.edit_document, size: 20),
-                    text: 'Work Entry',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_document, size: 18),
+                        SizedBox(width: 8),
+                        Text('Work Entry'),
+                      ],
+                    ),
                   ),
                   Tab(
-                    icon: Icon(Icons.document_scanner, size: 20),
-                    text: 'DPR',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.document_scanner, size: 18),
+                        SizedBox(width: 8),
+                        Text('DPR'),
+                      ],
+                    ),
                   ),
                   Tab(
-                    icon: Icon(Icons.work, size: 20),
-                    text: 'Work',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.work, size: 18),
+                        SizedBox(width: 8),
+                        Text('Work'),
+                      ],
+                    ),
                   ),
                   Tab(
-                    icon: Icon(Icons.analytics, size: 20),
-                    text: 'Monitoring',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.analytics, size: 18),
+                        SizedBox(width: 8),
+                        Text('Monitoring'),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              widget.project.name,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: categoryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: categoryColor.withOpacity(0.3)),
+              ),
+              child: Text(
+                '#${widget.project.srNo}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: categoryColor,
+                ),
               ),
             ),
-            Text(
-              '#${widget.project.srNo} • ${widget.project.categoryName ?? 'Unknown'}',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: categoryColor,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.project.name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -131,7 +166,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
           // Project Header Card
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.surface,
               border: Border(
@@ -143,16 +178,16 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
               children: [
                 // Serial Number Badge
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: categoryColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
                         color: categoryColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -161,14 +196,14 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                       '#${widget.project.srNo}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(width: 20),
+                const SizedBox(width: 14),
 
                 // Project Info
                 Expanded(
@@ -177,14 +212,15 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                     children: [
                       Text(
                         widget.project.name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                        maxLines: 2,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           _InfoChip(
@@ -192,7 +228,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                             label: widget.project.categoryName ?? 'Unknown',
                             color: categoryColor,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           _InfoChip(
                             icon: Icons.location_on,
                             label: widget.project.location,
