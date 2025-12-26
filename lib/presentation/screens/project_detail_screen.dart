@@ -84,6 +84,10 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                 ),
                 tabs: const [
                   Tab(
+                    icon: Icon(Icons.edit_document, size: 20),
+                    text: 'Work Entry',
+                  ),
+                  Tab(
                     icon: Icon(Icons.document_scanner, size: 20),
                     text: 'DPR',
                   ),
@@ -94,10 +98,6 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
                   Tab(
                     icon: Icon(Icons.analytics, size: 20),
                     text: 'Monitoring',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.edit_document, size: 20),
-                    text: 'Work Entry',
                   ),
                 ],
               ),
@@ -243,10 +243,10 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
+                WorkEntryTab(projectId: widget.project.id!),
                 DPRTab(projectId: widget.project.id!),
                 WorkTab(projectId: widget.project.id!),
                 MonitoringTab(projectId: widget.project.id!),
-                WorkEntryTab(projectId: widget.project.id!),
               ],
             ),
           ),

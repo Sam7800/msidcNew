@@ -48,7 +48,7 @@ class DatabaseHelper {
 
       final db = await openDatabase(
         path,
-        version: 2,
+        version: 3,
         onCreate: _createDB,
         onConfigure: _onConfigure,
         onUpgrade: _upgradeDB,
@@ -77,10 +77,11 @@ class DatabaseHelper {
       await _migrateV1ToV2(db);
     }
 
-    await _logger.database('UPGRADE', 'Database upgrade completed successfully');
+    if (oldVersion < 3) {
+      await _migrateV2ToV3(db);
+    }
 
-    // Future migrations:
-    // if (oldVersion < 3) { await _migrateV2ToV3(db); }
+    await _logger.database('UPGRADE', 'Database upgrade completed successfully');
   }
 
   /// Migrate from version 1 to version 2
@@ -194,6 +195,30 @@ class DatabaseHelper {
       ''');
 
       await _logger.database('MIGRATION', 'v1→v2 migration completed successfully');
+    } catch (e, stackTrace) {
+      await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Migrate from version 2 to version 3
+  /// - Adds work_id and name_of_work columns to work_entry table
+  Future<void> _migrateV2ToV3(Database db) async {
+    await _logger.database('MIGRATION', 'Starting v2→v3 migration');
+
+    try {
+      // Add work_id and name_of_work columns to work_entry table
+      await _logger.database('MIGRATION', 'Adding work_id column to work_entry table');
+      await db.execute('''
+        ALTER TABLE work_entry ADD COLUMN work_id TEXT
+      ''');
+
+      await _logger.database('MIGRATION', 'Adding name_of_work column to work_entry table');
+      await db.execute('''
+        ALTER TABLE work_entry ADD COLUMN name_of_work TEXT
+      ''');
+
+      await _logger.database('MIGRATION', 'v2→v3 migration completed successfully');
     } catch (e, stackTrace) {
       await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
       rethrow;
@@ -370,6 +395,8 @@ class DatabaseHelper {
       CREATE TABLE work_entry (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
+        work_id TEXT,
+        name_of_work TEXT,
         person_responsible TEXT,
         post_held TEXT,
         pending_with TEXT,

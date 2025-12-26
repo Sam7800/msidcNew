@@ -1,0 +1,10 @@
+{
+  "dart.flutterSdkPath": "/Users/shubham/fvm/default",
+  "dart.sdkPath": "/Users/shubham/fvm/default/bin/cache/dart-sdk",
+  "search.exclude": {
+    "**/.fvm": true
+  },
+  "files.watcherExclude": {
+    "**/.fvm": true
+  }
+}

@@ -21,9 +21,9 @@
     },
     "linking_enabled": false
   },
-  "out_dir_shared": "/Users/kedarkhopade/Desktop/MIDC/msidcNew/.dart_tool/hooks_runner/shared/sqlite3/build/",
-  "out_file": "/Users/kedarkhopade/Desktop/MIDC/msidcNew/.dart_tool/hooks_runner/sqlite3/7ad245dadc068daf8ba9d7bb51a8ef8e/output.json",
+  "out_dir_shared": "/Users/shubham/Desktop/msidcNew/.dart_tool/hooks_runner/shared/sqlite3/build/",
+  "out_file": "/Users/shubham/Desktop/msidcNew/.dart_tool/hooks_runner/sqlite3/7ad245dadc068daf8ba9d7bb51a8ef8e/output.json",
   "package_name": "sqlite3",
-  "package_root": "/Users/kedarkhopade/.pub-cache/hosted/pub.dev/sqlite3-3.1.1/",
+  "package_root": "/Users/shubham/.pub-cache/hosted/pub.dev/sqlite3-3.1.1/",
   "user_defines": {}
 }

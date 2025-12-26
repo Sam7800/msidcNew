@@ -9,7 +9,6 @@ import '../providers/project_provider.dart';
 import '../providers/category_provider.dart';
 import '../../core/services/excel_service.dart';
 import '../../core/services/csv_import_service.dart';
-import '../../core/services/sample_data_service.dart';
 import '../../core/services/excel_debug_service.dart';
 import '../../core/database/database_helper.dart';
 import '../widgets/dialogs/create_category_dialog.dart';
@@ -496,135 +495,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     }
   }
 
-  Future<void> _handleGenerateSampleData() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Generate Sample Data'),
-        content: const Text(
-          'This will create 34 sample projects across all 5 categories.\n\n'
-          'Do you want to continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Generate'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      if (!mounted) return;
-
-      // Show loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Generating sample data...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      final sampleService = SampleDataService(DatabaseHelper.instance);
-      final result = await sampleService.generateSampleData();
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading
-
-      if (result['success'] == true) {
-        // Refresh data
-        ref.read(projectProvider.notifier).loadAllProjects();
-        ref.refresh(projectCountByCategoryProvider);
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: AppColors.success),
-                SizedBox(width: 12),
-                Text('Success'),
-              ],
-            ),
-            content: Text('Generated ${result['projects']} sample projects!'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error, color: AppColors.error),
-                SizedBox(width: 12),
-                Text('Error'),
-              ],
-            ),
-            content: Text(result['message'] ?? 'Unknown error'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error, color: AppColors.error),
-                SizedBox(width: 12),
-                Text('Error'),
-              ],
-            ),
-            content: Text('Failed to generate sample data: ${e.toString()}'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -720,24 +590,19 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             onPressed: _handleCreateCategory,
             color: AppColors.textPrimary,
           ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, size: 24),
-            tooltip: 'Generate Sample Data',
-            onPressed: _handleGenerateSampleData,
-            color: AppColors.textPrimary,
-          ),
-          IconButton(
-            icon: const Icon(Icons.upload_file, size: 24),
-            tooltip: 'Import from Excel',
-            onPressed: _handleImport,
-            color: AppColors.textPrimary,
-          ),
-          IconButton(
-            icon: const Icon(Icons.download, size: 24),
-            tooltip: 'Export to Excel',
-            onPressed: _handleExport,
-            color: AppColors.textPrimary,
-          ),
+          // Hidden for now - Import/Export functionality
+          // IconButton(
+          //   icon: const Icon(Icons.upload_file, size: 24),
+          //   tooltip: 'Import from Excel',
+          //   onPressed: _handleImport,
+          //   color: AppColors.textPrimary,
+          // ),
+          // IconButton(
+          //   icon: const Icon(Icons.download, size: 24),
+          //   tooltip: 'Export to Excel',
+          //   onPressed: _handleExport,
+          //   color: AppColors.textPrimary,
+          // ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 24),
             tooltip: Constants.tooltipRefresh,

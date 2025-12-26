@@ -11,6 +11,8 @@ import 'dart:convert';
 class WorkEntryData {
   final int? id;
   final int projectId;
+  final String? workId; // Alphanumeric work identifier
+  final String? nameOfWork; // Name/description of work
   final String? personResponsible;
   final String? postHeld;
   final String? pendingWith;
@@ -27,6 +29,8 @@ class WorkEntryData {
   WorkEntryData({
     this.id,
     required this.projectId,
+    this.workId,
+    this.nameOfWork,
     this.personResponsible,
     this.postHeld,
     this.pendingWith,
@@ -47,6 +51,8 @@ class WorkEntryData {
     return WorkEntryData(
       id: map['id'] as int?,
       projectId: map['project_id'] as int,
+      workId: map['work_id'] as String?,
+      nameOfWork: map['name_of_work'] as String?,
       personResponsible: map['person_responsible'] as String?,
       postHeld: map['post_held'] as String?,
       pendingWith: map['pending_with'] as String?,
@@ -75,6 +81,8 @@ class WorkEntryData {
     return {
       'id': id,
       'project_id': projectId,
+      'work_id': workId,
+      'name_of_work': nameOfWork,
       'person_responsible': personResponsible,
       'post_held': postHeld,
       'pending_with': pendingWith,
@@ -432,6 +440,8 @@ class WorkEntryData {
   WorkEntryData copyWith({
     int? id,
     int? projectId,
+    String? workId,
+    String? nameOfWork,
     String? personResponsible,
     String? postHeld,
     String? pendingWith,
@@ -445,6 +455,8 @@ class WorkEntryData {
     return WorkEntryData(
       id: id ?? this.id,
       projectId: projectId ?? this.projectId,
+      workId: workId ?? this.workId,
+      nameOfWork: nameOfWork ?? this.nameOfWork,
       personResponsible: personResponsible ?? this.personResponsible,
       postHeld: postHeld ?? this.postHeld,
       pendingWith: pendingWith ?? this.pendingWith,
