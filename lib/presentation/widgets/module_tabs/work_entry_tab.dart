@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:convert';
 import '../../../theme/app_colors.dart';
 import '../../../data/models/work_entry_data.dart';
 import '../../providers/repository_providers.dart';
@@ -27,6 +25,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   final _workIdController = TextEditingController();
   final _nameOfWorkController = TextEditingController();
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   String _searchQuery = '';
 
   // Form data storage for DPR fields
@@ -37,6 +36,12 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   bool _dprSectionExpanded = true;
   bool _workSectionExpanded = false;
   bool _pmsSectionExpanded = false;
+
+  // Section keys for scrolling
+  final GlobalKey _basicInfoKey = GlobalKey();
+  final GlobalKey _dprSectionKey = GlobalKey();
+  final GlobalKey _workSectionKey = GlobalKey();
+  final GlobalKey _pmsSectionKey = GlobalKey();
 
   @override
   void initState() {
@@ -49,7 +54,96 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     _workIdController.dispose();
     _nameOfWorkController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Search and auto-scroll functionality
+  void _performSearch(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _searchQuery = '';
+      });
+      return;
+    }
+
+    final searchLower = query.toLowerCase().trim();
+
+    setState(() {
+      _searchQuery = searchLower;
+    });
+
+    // Define searchable content for each section with more keywords
+    final sections = [
+      {
+        'key': _basicInfoKey,
+        'expandField': 'basic',
+        'content': 'basic information work id name of work',
+      },
+      {
+        'key': _dprSectionKey,
+        'expandField': 'dpr',
+        'content': 'dpr administrative approval aa amount broad scope bid consultant selection agreement nit appointment survey geotechnical investigation soil alignment plan profile pavement design structures bridge traffic study report junctions drainage furniture layout signage miscellaneous boq quantity draft environmental clearance ec forest land acquisition utility shifting power quarry chart final approval contractor rfp gcc schedules drawings volume',
+      },
+      {
+        'key': _workSectionKey,
+        'expandField': 'work',
+        'content': 'work section contractor appointment agreement work order commencement mobilization site drawings possession completion certificate extensions defect liability final bill payment',
+      },
+      {
+        'key': _pmsSectionKey,
+        'expandField': 'pms',
+        'content': 'pms project monitoring milestone progress technical audit revised estimate',
+      },
+    ];
+
+    // Find matching section
+    for (var section in sections) {
+      final content = section['content'] as String;
+      if (content.contains(searchLower)) {
+        // Expand the appropriate section
+        final expandField = section['expandField'] as String;
+        setState(() {
+          if (expandField == 'basic') _basicInfoExpanded = true;
+          if (expandField == 'dpr') _dprSectionExpanded = true;
+          if (expandField == 'work') _workSectionExpanded = true;
+          if (expandField == 'pms') _pmsSectionExpanded = true;
+        });
+
+        // Scroll to section after expansion animation and setState completes
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+
+          final key = section['key'] as GlobalKey;
+          final context = key.currentContext;
+
+          if (context != null) {
+            try {
+              // Get the RenderBox of the widget
+              final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+              if (renderBox != null) {
+                // Get the position of the widget relative to the scroll view
+                final position = renderBox.localToGlobal(Offset.zero);
+
+                // Calculate scroll offset (subtract app bar height ~100px to show section at top)
+                final scrollOffset = _scrollController.offset + position.dy - 100;
+
+                // Animate to the calculated position
+                _scrollController.animateTo(
+                  scrollOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeInOutCubic,
+                );
+              }
+            } catch (e) {
+              print('[WorkEntryTab] Error scrolling to section: $e');
+            }
+          }
+        });
+
+        break; // Only scroll to first match
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -714,43 +808,24 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
                         ),
                         child: TextField(
                           controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value.toLowerCase();
-                            });
-                          },
+                          enabled: false,
                           style: const TextStyle(
                             fontSize: 14,
-                            color: AppColors.textPrimary,
+                            color: AppColors.textTertiary,
                           ),
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             hintText: 'Search fields...',
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                               fontSize: 14,
                               color: AppColors.textTertiary,
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
                               size: 20,
                               color: AppColors.textSecondary,
                             ),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      size: 18,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _searchQuery = '';
-                                      });
-                                    },
-                                  )
-                                : null,
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
+                            contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 10,
                             ),
@@ -816,10 +891,12 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
             // Form Sections
             Expanded(
               child: ListView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(24),
                 children: [
                   // Basic Info Section
                   _buildSection(
+                    key: _basicInfoKey,
                     title: 'Basic Information',
                     subtitle: 'Work identification details',
                     icon: Icons.info_outline,
@@ -834,6 +911,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
 
                   // DPR Section
                   _buildSection(
+                    key: _dprSectionKey,
                     title: 'DPR Section',
                     subtitle: 'Complete DPR tracking with all fields',
                     icon: Icons.document_scanner,
@@ -848,6 +926,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
 
                   // Work Section
                   _buildSection(
+                    key: _workSectionKey,
                     title: 'Work Section',
                     subtitle: 'Work execution and contract tracking',
                     icon: Icons.work,
@@ -862,6 +941,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
 
                   // PMS Section
                   _buildSection(
+                    key: _pmsSectionKey,
                     title: 'PMS Section',
                     subtitle: 'Project monitoring and milestone tracking',
                     icon: Icons.analytics,
@@ -882,7 +962,9 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     );
   }
 
+  // MAJOR SECTION CONTAINER - Provides clear visual hierarchy and grouping
   Widget _buildSection({
+    Key? key,
     required String title,
     required String subtitle,
     required IconData icon,
@@ -891,31 +973,73 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     required Function(bool) onExpand,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 2,
-      child: ExpansionTile(
-        initiallyExpanded: isExpanded,
-        onExpansionChanged: onExpand,
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color),
+    return Container(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-        subtitle: Text(subtitle),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(children: children),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: isExpanded,
+          onExpansionChanged: onExpand,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          // SECTION HEADER - Left-aligned icon + title for Excel-like scanning
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: color.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.3,
+              ),
+            ),
+          ),
+          children: [
+            // FORM CONTENT AREA - Consistent left alignment and spacing
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2721,6 +2845,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     ];
   }
 
+  // DROPDOWN FIELD - Matches overall form field styling
   Widget _buildDropdownField({
     required String label,
     required String fieldKey,
@@ -2728,71 +2853,124 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   }) {
     final currentValue = _formData[fieldKey]?.toString();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 200,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: currentValue?.isEmpty == true ? null : currentValue,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              filled: !_isEditing,
-              fillColor: _isEditing ? null : AppColors.surfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 220,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+                height: 1.4,
               ),
             ),
-            items: options.map((option) {
-              return DropdownMenuItem(value: option, child: Text(option));
-            }).toList(),
-            onChanged: _isEditing
-                ? (value) {
-                    setState(() {
-                      _formData[fieldKey] = value ?? '';
-                    });
-                  }
-                : null,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
-        ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              value: currentValue?.isEmpty == true ? null : currentValue,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                ),
+                filled: true,
+                fillColor: _isEditing ? AppColors.surface : AppColors.surfaceVariant.withOpacity(0.5),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+              ),
+              items: options.map((option) {
+                return DropdownMenuItem(
+                  value: option,
+                  child: Text(
+                    option,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                );
+              }).toList(),
+              onChanged: _isEditing
+                  ? (value) {
+                      setState(() {
+                        _formData[fieldKey] = value ?? '';
+                      });
+                    }
+                  : null,
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // SUB-SECTION HEADER - Creates clear visual breaks within major sections
+  // Excel-like scanning: bold, color-coded, adequate whitespace
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      child: Row(
+        children: [
+          // Left accent bar for visual hierarchy
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // RESPONSIBILITY METADATA GROUP - Collapsible to reduce clutter, visually grouped
+  // Keeps tracking fields together without hiding critical data by default
   Widget _buildResponsibilityFields(String prefix) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.border.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: const EdgeInsets.only(left: 0, top: 8, bottom: 8),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          // Metadata indicator - visually distinct from primary data
           title: Row(
             children: [
               Icon(
@@ -2807,12 +2985,12 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
-                  fontStyle: FontStyle.italic,
                 ),
               ),
             ],
           ),
           children: [
+            const SizedBox(height: 12),
             _buildLabeledTextField(
               label: 'Person Responsible',
               fieldKey: '${prefix}_person_responsible',
@@ -2839,6 +3017,8 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     );
   }
 
+  // LABELED TEXT FIELD - Excel-like row layout with consistent label width
+  // Left-aligned labels, fixed width for scanning, adequate spacing
   Widget _buildLabeledTextField({
     required String label,
     TextEditingController? controller,
@@ -2848,55 +3028,84 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     int maxLines = 1,
     TextInputType? keyboardType,
   }) {
-    return Row(
-      crossAxisAlignment: maxLines > 1
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 200,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: TextFormField(
-            controller: controller,
-            initialValue: controller == null && fieldKey != null
-                ? (_formData[fieldKey]?.toString() ?? '')
-                : null,
-            enabled: enabled,
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hint,
-              border: const OutlineInputBorder(),
-              filled: !enabled,
-              fillColor: enabled ? null : AppColors.surfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: maxLines > 1
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
+        children: [
+          // Fixed-width label column for Excel-like alignment
+          SizedBox(
+            width: 220,
+            child: Padding(
+              padding: EdgeInsets.only(top: maxLines > 1 ? 12 : 0),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
               ),
             ),
-            onChanged: fieldKey != null
-                ? (value) {
-                    setState(() {
-                      _formData[fieldKey] = value;
-                    });
-                  }
-                : null,
           ),
-        ),
-      ],
+          const SizedBox(width: 20),
+          // Input field column
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              initialValue: controller == null && fieldKey != null
+                  ? (_formData[fieldKey]?.toString() ?? '')
+                  : null,
+              enabled: enabled,
+              maxLines: maxLines,
+              keyboardType: keyboardType,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                ),
+                filled: true,
+                fillColor: enabled ? AppColors.surface : AppColors.surfaceVariant.withOpacity(0.5),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: maxLines > 1 ? 14 : 12,
+                ),
+              ),
+              onChanged: fieldKey != null
+                  ? (value) {
+                      setState(() {
+                        _formData[fieldKey] = value;
+                      });
+                    }
+                  : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+  // DATE PICKER FIELD - Matches text field layout for visual consistency
   Widget _buildLabeledDateField({
     required String label,
     required String fieldKey,
@@ -2911,70 +3120,87 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
       } catch (_) {}
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 200,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 220,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+                height: 1.4,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: InkWell(
-            onTap: enabled
-                ? () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) {
-                      setState(() {
-                        _formData[fieldKey] = date.toIso8601String().split(
-                          'T',
-                        )[0];
-                      });
+          const SizedBox(width: 20),
+          Expanded(
+            child: InkWell(
+              onTap: enabled
+                  ? () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _formData[fieldKey] = date.toIso8601String().split(
+                            'T',
+                          )[0];
+                        });
+                      }
                     }
-                  }
-                : null,
-            child: InputDecorator(
-              decoration: InputDecoration(
-                hintText: hint,
-                border: const OutlineInputBorder(),
-                filled: !enabled,
-                fillColor: enabled ? null : AppColors.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
+                  : null,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  hintText: hint,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  filled: true,
+                  fillColor: enabled ? AppColors.surface : AppColors.surfaceVariant.withOpacity(0.5),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  suffixIcon: Icon(
+                    Icons.calendar_today,
+                    size: 18,
+                    color: enabled ? AppColors.textSecondary : AppColors.textTertiary,
+                  ),
                 ),
-                suffixIcon: const Icon(Icons.calendar_today, size: 20),
-              ),
-              child: Text(
-                selectedDate != null
-                    ? DateFormat('dd/MM/yyyy').format(selectedDate)
-                    : hint ?? 'Select date',
-                style: TextStyle(
-                  color: selectedDate != null
-                      ? AppColors.textPrimary
-                      : AppColors.textTertiary,
-                  fontSize: 14,
+                child: Text(
+                  selectedDate != null
+                      ? DateFormat('dd/MM/yyyy').format(selectedDate)
+                      : hint ?? 'Select date',
+                  style: TextStyle(
+                    color: selectedDate != null
+                        ? AppColors.textPrimary
+                        : AppColors.textTertiary,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+  // RADIO GROUP FIELD - Horizontal button group for quick scanning
+  // Fixed label width maintains column alignment across form
   Widget _buildRadioGroupField({
     required String label,
     required String fieldKey,
@@ -2982,91 +3208,93 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   }) {
     final currentValue = _formData[fieldKey]?.toString();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 200,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 220,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
               child: Text(
                 label,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
+                  height: 1.4,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: options.map((option) {
-                  final isSelected = currentValue == option;
-                  return InkWell(
-                    onTap: _isEditing
-                        ? () {
-                            setState(() {
-                              _formData[fieldKey] = option;
-                            });
-                          }
-                        : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: options.map((option) {
+                final isSelected = currentValue == option;
+                return InkWell(
+                  onTap: _isEditing
+                      ? () {
+                          setState(() {
+                            _formData[fieldKey] = option;
+                          });
+                        }
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withOpacity(0.08)
+                          : AppColors.surface,
+                      border: Border.all(
                         color: isSelected
-                            ? AppColors.primary.withOpacity(0.1)
-                            : Colors.transparent,
-                        border: Border.all(
+                            ? AppColors.primary
+                            : AppColors.border,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          size: 18,
                           color: isSelected
                               ? AppColors.primary
-                              : AppColors.border,
-                          width: isSelected ? 2 : 1,
+                              : AppColors.textSecondary,
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSelected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                            size: 20,
+                        const SizedBox(width: 8),
+                        Text(
+                          option,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                             color: isSelected
                                 ? AppColors.primary
-                                : AppColors.textSecondary,
+                                : AppColors.textPrimary,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            option,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
