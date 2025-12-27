@@ -371,31 +371,28 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                                   );
                                 }
 
-                                return GridView.builder(
-                                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 5, // Same as categories
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                    childAspectRatio: 0.85,
-                                  ),
+                                return ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                                   itemCount: filteredProjects.length,
                                   itemBuilder: (context, index) {
                                     final project = filteredProjects[index];
-                                    return _ProjectCard(
-                                      project: project,
-                                      categoryColor: categoryColor,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ProjectDetailScreen(
-                                              project: project,
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _ProjectListItem(
+                                        project: project,
+                                        categoryColor: categoryColor,
+                                        categoryIcon: widget.category.getIcon(),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ProjectDetailScreen(
+                                                project: project,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        },
+                                      ),
                                     );
                                   },
                                 );
@@ -408,23 +405,25 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }
 }
 
-/// Project Card Widget
-class _ProjectCard extends StatefulWidget {
+/// Project List Item Widget
+class _ProjectListItem extends StatefulWidget {
   final Project project;
   final Color categoryColor;
+  final IconData categoryIcon;
   final VoidCallback onTap;
 
-  const _ProjectCard({
+  const _ProjectListItem({
     required this.project,
     required this.categoryColor,
+    required this.categoryIcon,
     required this.onTap,
   });
 
   @override
-  State<_ProjectCard> createState() => _ProjectCardState();
+  State<_ProjectListItem> createState() => _ProjectListItemState();
 }
 
-class _ProjectCardState extends State<_ProjectCard> {
+class _ProjectListItemState extends State<_ProjectListItem> {
   bool _isHovered = false;
 
   @override
@@ -436,42 +435,35 @@ class _ProjectCardState extends State<_ProjectCard> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          // All borders in category color - same as category card
           border: Border.all(
-            color: widget.categoryColor,
-            width: _isHovered ? 2 : 1.5,
+            color: _isHovered
+                ? widget.categoryColor
+                : AppColors.border,
+            width: _isHovered ? 1.5 : 1,
           ),
-          // Shadow always present - same as category card
           boxShadow: _isHovered
               ? [
                   BoxShadow(
-                    color: widget.categoryColor.withOpacity(0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: widget.categoryColor.withOpacity(0.08),
-                    blurRadius: 4,
+                    color: widget.categoryColor.withOpacity(0.1),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
-                ],
+                ]
+              : null,
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(16), // Same as category card
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  // Serial Number Badge - exactly like category card icon
+                  // Serial Number Badge
                   Container(
-                    width: 56, // Same as category icon
-                    height: 56,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: widget.categoryColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
@@ -486,63 +478,77 @@ class _ProjectCardState extends State<_ProjectCard> {
                         style: TextStyle(
                           color: widget.categoryColor,
                           fontWeight: FontWeight.w600,
-                          fontSize: 18, // Larger, more visible
+                          fontSize: 16,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 12), // Same spacing as category
+                  const SizedBox(width: 16),
 
-                  // Project Name - same styling as category name
-                  Text(
-                    widget.project.name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14, // Same as category name
+                  // Project Name and Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.project.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                        if (widget.project.broadScope != null && widget.project.broadScope!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.project.broadScope!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(width: 16),
 
-                  // Action badge - similar to category project count
+                  // Category Icon Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: widget.categoryColor.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(16),
+                      color: widget.categoryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: widget.categoryColor.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.arrow_forward,
-                          size: 12,
-                          color: widget.categoryColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'View',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: widget.categoryColor,
-                          ),
-                        ),
-                      ],
+                    child: Icon(
+                      widget.categoryIcon,
+                      size: 20,
+                      color: widget.categoryColor,
                     ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Arrow Icon
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: _isHovered
+                        ? widget.categoryColor
+                        : AppColors.textTertiary,
                   ),
                 ],
               ),

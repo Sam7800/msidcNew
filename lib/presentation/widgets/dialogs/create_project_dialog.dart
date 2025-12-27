@@ -4,16 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/project.dart';
 import '../../../data/models/category.dart';
 import '../../providers/project_provider.dart';
-import '../../providers/category_provider.dart';
 import '../../../theme/app_colors.dart';
 
 /// Dialog for creating a new project
 class CreateProjectDialog extends ConsumerStatefulWidget {
-  final Category? preselectedCategory;
+  final Category preselectedCategory;
 
   const CreateProjectDialog({
     super.key,
-    this.preselectedCategory,
+    required this.preselectedCategory,
   });
 
   @override
@@ -26,19 +25,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
   final _nameController = TextEditingController();
   final _broadScopeController = TextEditingController();
 
-  Category? _selectedCategory;
   bool _isSubmitting = false;
   bool _isCheckingSrNo = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCategory = widget.preselectedCategory;
-    // Load categories
-    Future.microtask(() {
-      ref.read(categoryProvider.notifier).loadAllCategories();
-    });
-  }
 
   @override
   void dispose() {
@@ -65,23 +53,13 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCategory == null || _selectedCategory!.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a category'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
     setState(() => _isSubmitting = true);
 
     try {
       final project = Project(
         srNo: int.parse(_srNoController.text.trim()),
         name: _nameController.text.trim(),
-        categoryId: _selectedCategory!.id!,
+        categoryId: widget.preselectedCategory.id!,
         broadScope: _broadScopeController.text.trim().isEmpty
             ? null
             : _broadScopeController.text.trim(),
@@ -115,47 +93,66 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     }
   }
 
+  Color _parseColor(String hex) {
+    final hexColor = hex.replaceAll('#', '');
+    return Color(int.parse('0xFF$hexColor'));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final categoryState = ref.watch(categoryProvider);
-    final categories = categoryState.categories;
+    final categoryColor = widget.preselectedCategory.getColor();
+    final categoryIcon = widget.preselectedCategory.getIcon();
 
     return Dialog(
+      elevation: 2,
+      shadowColor: AppColors.shadow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(
+          color: AppColors.border,
+          width: 1,
+        ),
+      ),
       child: Container(
         width: 500,
         constraints: const BoxConstraints(maxHeight: 600),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Header - Flat with border-bottom
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _selectedCategory?.getColor() ?? AppColors.primary,
-                    (_selectedCategory?.getColor() ?? AppColors.primary)
-                        .withOpacity(0.7),
-                  ],
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 20),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
+                  // Icon preview - border-based
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(12),
+                      color: categoryColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: categoryColor.withOpacity(0.3),
+                        width: 1,
+                      ),
                     ),
                     child: Icon(
-                      _selectedCategory?.getIcon() ?? Icons.folder,
-                      color: _selectedCategory?.getColor() ?? AppColors.primary,
-                      size: 28,
+                      categoryIcon,
+                      color: categoryColor,
+                      size: 24,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -163,14 +160,16 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                     child: Text(
                       'Create New Project',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: const Icon(Icons.close, size: 20),
+                    color: AppColors.textSecondary,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -180,7 +179,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
             // Form
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -189,11 +188,27 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                       // SR No field
                       TextFormField(
                         controller: _srNoController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Serial Number (SR No) *',
+                          labelStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                           hintText: 'Enter unique serial number',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.numbers),
+                          hintStyle: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: const Icon(Icons.numbers, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           suffixIcon: _isCheckingSrNo
                               ? const Padding(
                                   padding: EdgeInsets.all(12.0),
@@ -221,16 +236,32 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                         },
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       // Name field
                       TextFormField(
                         controller: _nameController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Project Name *',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                           hintText: 'Enter project name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.title),
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: Icon(Icons.title, size: 20),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -243,53 +274,32 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                         },
                       ),
 
-                      const SizedBox(height: 16),
-
-                      // Category dropdown
-                      DropdownButtonFormField<Category>(
-                        value: _selectedCategory,
-                        decoration: const InputDecoration(
-                          labelText: 'Category *',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.category),
-                        ),
-                        items: categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  category.getIcon(),
-                                  color: category.getColor(),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(category.name),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (category) {
-                          setState(() => _selectedCategory = category);
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select a category';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       // Broad Scope field
                       TextFormField(
                         controller: _broadScopeController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Broad Scope (Optional)',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
                           hintText: 'Enter project scope description',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textTertiary,
+                          ),
+                          prefixIcon: Icon(Icons.description, size: 20),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                         maxLines: 3,
                       ),
@@ -301,12 +311,18 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
 
             // Actions
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
               ),
               child: Row(
@@ -314,17 +330,35 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                 children: [
                   TextButton(
                     onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _selectedCategory?.getColor() ?? AppColors.primary,
+                      backgroundColor: categoryColor,
                       foregroundColor: Colors.white,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isSubmitting
@@ -336,7 +370,13 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text('Create Project'),
+                        : const Text(
+                            'Create Project',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ],
               ),
