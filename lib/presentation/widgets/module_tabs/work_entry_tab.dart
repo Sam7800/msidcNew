@@ -53,7 +53,8 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     setState(() => _isLoading = true);
 
     final repository = ref.read(workEntryRepositoryProvider);
-    final data = await repository.getWorkEntryByProjectId(widget.projectId);
+    // Load draft first, then fall back to final data
+    final data = await repository.getWorkEntryOrDraftByProjectId(widget.projectId);
 
     setState(() {
       _workEntryData = data;
@@ -68,6 +69,9 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ...data.workSection,
           ...data.pmsSection,
         };
+        print('[WorkEntryTab] Loaded data - DPR: ${data.dprSection.length} fields, Work: ${data.workSection.length} fields, PMS: ${data.pmsSection.length} fields, isDraft: ${data.isDraft}');
+      } else {
+        print('[WorkEntryTab] No data found for project ${widget.projectId}');
       }
     });
   }
@@ -75,12 +79,15 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   Future<void> _saveData() async {
     if (!_formKey.currentState!.validate()) return;
 
+    print('[WorkEntryTab] Starting save for project ${widget.projectId}');
     final repository = ref.read(workEntryRepositoryProvider);
 
     // Get DPR, Work, and PMS data
     final dprData = _getDPRSectionData();
     final workData = _getWorkSectionData();
     final pmsData = _getPMSSectionData();
+
+    print('[WorkEntryTab] Collected section data - DPR: ${dprData.length}, Work: ${workData.length}, PMS: ${pmsData.length}');
 
     final updatedData = WorkEntryData(
       id: _workEntryData?.id,
@@ -96,9 +103,12 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
       isDraft: true,
     );
 
+    print('[WorkEntryTab] Saving draft - ID: ${updatedData.id}, isDraft: ${updatedData.isDraft}');
     await repository.saveDraft(updatedData);
+    print('[WorkEntryTab] Draft saved successfully');
 
     setState(() => _isEditing = false);
+    print('[WorkEntryTab] Reloading data after save');
     _loadData();
 
     if (mounted) {

@@ -1,16 +1,19 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../data/models/work_entry_data.dart';
 import '../database_helper.dart';
+import '../../services/logger_service.dart';
 
 /// Work Entry Repository - Data access layer for work entry data (84 fields)
 class WorkEntryRepository {
   final DatabaseHelper _dbHelper;
+  final LoggerService _logger = LoggerService.instance;
 
   WorkEntryRepository(this._dbHelper);
 
-  /// Get work entry by project ID
+  /// Get work entry by project ID (final data only)
   Future<WorkEntryData?> getWorkEntryByProjectId(int projectId) async {
     try {
+      await _logger.info('WorkEntryRepo', 'Loading FINAL work entry for project $projectId');
       final db = await _dbHelper.database;
       final maps = await db.query(
         'work_entry',
@@ -19,16 +22,50 @@ class WorkEntryRepository {
         orderBy: 'updated_at DESC',
         limit: 1,
       );
-      if (maps.isEmpty) return null;
+      if (maps.isEmpty) {
+        await _logger.warning('WorkEntryRepo', 'No FINAL work entry found for project $projectId');
+        return null;
+      }
+      await _logger.info('WorkEntryRepo', 'Found FINAL work entry for project $projectId');
       return WorkEntryData.fromMap(maps.first);
     } catch (e) {
+      await _logger.error('WorkEntryRepo', 'Failed to load work entry', e);
       throw Exception('Failed to load work entry: $e');
+    }
+  }
+
+  /// Get work entry by project ID - prioritizes draft, falls back to final
+  Future<WorkEntryData?> getWorkEntryOrDraftByProjectId(int projectId) async {
+    try {
+      await _logger.info('WorkEntryRepo', 'Loading work entry (draft or final) for project $projectId');
+
+      // Try to get draft first
+      final draft = await getDraftByProjectId(projectId);
+      if (draft != null) {
+        await _logger.info('WorkEntryRepo', 'Found DRAFT work entry for project $projectId');
+        return draft;
+      }
+
+      // Fall back to final data
+      await _logger.info('WorkEntryRepo', 'No draft found, trying final data');
+      final finalData = await getWorkEntryByProjectId(projectId);
+      if (finalData != null) {
+        await _logger.info('WorkEntryRepo', 'Found FINAL work entry for project $projectId');
+        return finalData;
+      }
+
+      await _logger.warning('WorkEntryRepo', 'No work entry data found for project $projectId');
+      return null;
+    } catch (e) {
+      await _logger.error('WorkEntryRepo', 'Failed to load work entry or draft', e);
+      throw Exception('Failed to load work entry or draft: $e');
     }
   }
 
   /// Get draft work entry by project ID
   Future<WorkEntryData?> getDraftByProjectId(int projectId) async {
     try {
+      await _logger.info('WorkEntryRepo', 'Loading DRAFT work entry for project $projectId');
       final db = await _dbHelper.database;
       final maps = await db.query(
         'work_entry',
@@ -37,9 +74,15 @@ class WorkEntryRepository {
         orderBy: 'updated_at DESC',
         limit: 1,
       );
-      if (maps.isEmpty) return null;
-      return WorkEntryData.fromMap(maps.first);
+      if (maps.isEmpty) {
+        await _logger.warning('WorkEntryRepo', 'No DRAFT found for project $projectId');
+        return null;
+      }
+      final data = WorkEntryData.fromMap(maps.first);
+      await _logger.info('WorkEntryRepo', 'Found DRAFT (ID: ${data.id}) with DPR: ${data.dprSection.length} fields, Work: ${data.workSection.length} fields, PMS: ${data.pmsSection.length} fields');
+      return data;
     } catch (e) {
+      await _logger.error('WorkEntryRepo', 'Failed to load draft work entry', e);
       throw Exception('Failed to load draft work entry: $e');
     }
   }
@@ -76,23 +119,30 @@ class WorkEntryRepository {
   /// Save draft
   Future<int> saveDraft(WorkEntryData workEntry) async {
     try {
+      await _logger.info('WorkEntryRepo', 'Saving draft for project ${workEntry.projectId}');
+      await _logger.info('WorkEntryRepo', 'Draft data - DPR fields: ${workEntry.dprSection.length}, Work fields: ${workEntry.workSection.length}, PMS fields: ${workEntry.pmsSection.length}');
+
       final draft = workEntry.copyWith(isDraft: true);
       final db = await _dbHelper.database;
 
       // Delete existing draft for this project
-      await db.delete(
+      final deletedCount = await db.delete(
         'work_entry',
         where: 'project_id = ? AND is_draft = 1',
         whereArgs: [workEntry.projectId],
       );
+      await _logger.info('WorkEntryRepo', 'Deleted $deletedCount existing drafts');
 
       // Insert new draft
-      return await db.insert(
+      final id = await db.insert(
         'work_entry',
         draft.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      await _logger.info('WorkEntryRepo', 'Draft saved successfully with ID: $id');
+      return id;
     } catch (e) {
+      await _logger.error('WorkEntryRepo', 'Failed to save draft', e);
       throw Exception('Failed to save draft: $e');
     }
   }

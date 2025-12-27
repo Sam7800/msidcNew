@@ -48,7 +48,7 @@ class DatabaseHelper {
 
       final db = await openDatabase(
         path,
-        version: 3,
+        version: 4,
         onCreate: _createDB,
         onConfigure: _onConfigure,
         onUpgrade: _upgradeDB,
@@ -79,6 +79,10 @@ class DatabaseHelper {
 
     if (oldVersion < 3) {
       await _migrateV2ToV3(db);
+    }
+
+    if (oldVersion < 4) {
+      await _migrateV3ToV4(db);
     }
 
     await _logger.database('UPGRADE', 'Database upgrade completed successfully');
@@ -225,6 +229,31 @@ class DatabaseHelper {
     }
   }
 
+  /// Migrate from version 3 to version 4
+  /// - Adds location and status columns to projects table
+  Future<void> _migrateV3ToV4(Database db) async {
+    await _logger.database('MIGRATION', 'Starting v3→v4 migration');
+
+    try {
+      // Add location column to projects table
+      await _logger.database('MIGRATION', 'Adding location column to projects table');
+      await db.execute('''
+        ALTER TABLE projects ADD COLUMN location TEXT DEFAULT 'Maharashtra'
+      ''');
+
+      // Add status column to projects table
+      await _logger.database('MIGRATION', 'Adding status column to projects table');
+      await db.execute('''
+        ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'In Progress'
+      ''');
+
+      await _logger.database('MIGRATION', 'v3→v4 migration completed successfully');
+    } catch (e, stackTrace) {
+      await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
   /// Create all tables and triggers
   Future<void> _createDB(Database db, int version) async {
     await _logger.database('CREATE', 'Creating database schema version $version');
@@ -264,7 +293,7 @@ class DatabaseHelper {
       await db.execute(insert);
     }
 
-    // Table 2: Projects (updated in v2 to use category_id FK)
+    // Table 2: Projects (updated in v2 to use category_id FK, v4 adds location and status)
     await _logger.database('CREATE', 'Creating projects table');
     await db.execute('''
       CREATE TABLE projects (
@@ -273,6 +302,8 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         category_id INTEGER NOT NULL,
         broad_scope TEXT,
+        location TEXT DEFAULT 'Maharashtra',
+        status TEXT DEFAULT 'In Progress',
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(sr_no),
