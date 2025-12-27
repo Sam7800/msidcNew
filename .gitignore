@@ -11,6 +11,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.metadata
+.claude/
 
 # IntelliJ related
 *.iml
@@ -33,6 +35,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+build/
 
 # Symbolication related
 app.*.symbols
@@ -70,6 +73,7 @@ app.*.map.json
 
 # Web
 /web/flutter_js/
+/web/
 
 # Coverage
 coverage/
