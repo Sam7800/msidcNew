@@ -54,80 +54,6 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
         iconTheme: const IconThemeData(
           color: AppColors.textPrimary,
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(49),
-          child: Column(
-            children: [
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [categoryColor.withOpacity(0.3), categoryColor],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-              ),
-              TabBar(
-                controller: _tabController,
-                indicatorColor: categoryColor,
-                indicatorWeight: 2,
-                labelColor: categoryColor,
-                unselectedLabelColor: AppColors.textSecondary,
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                tabs: const [
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.edit_document, size: 18),
-                        SizedBox(width: 8),
-                        Text('Work Entry'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.document_scanner, size: 18),
-                        SizedBox(width: 8),
-                        Text('DPR'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.work, size: 18),
-                        SizedBox(width: 8),
-                        Text('Work'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.analytics, size: 18),
-                        SizedBox(width: 8),
-                        Text('Monitoring'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
         title: Row(
           children: [
             Container(
@@ -200,6 +126,60 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
           WorkTab(projectId: widget.project.id!),
           MonitoringTab(projectId: widget.project.id!),
         ],
+      ),
+      bottomNavigationBar: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+            top: BorderSide(
+              color: AppColors.border,
+              width: 1,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: categoryColor,
+            indicatorWeight: 2,
+            labelColor: categoryColor,
+            unselectedLabelColor: AppColors.textSecondary,
+            labelPadding: EdgeInsets.zero,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.edit_document, size: 20),
+                iconMargin: EdgeInsets.only(bottom: 2),
+                text: 'Work Entry',
+              ),
+              Tab(
+                icon: Icon(Icons.document_scanner, size: 20),
+                iconMargin: EdgeInsets.only(bottom: 2),
+                text: 'DPR',
+              ),
+              Tab(
+                icon: Icon(Icons.work, size: 20),
+                iconMargin: EdgeInsets.only(bottom: 2),
+                text: 'Work',
+              ),
+              Tab(
+                icon: Icon(Icons.analytics, size: 20),
+                iconMargin: EdgeInsets.only(bottom: 2),
+                text: 'Monitoring',
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -26,6 +26,8 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   // Controllers for top-level fields
   final _workIdController = TextEditingController();
   final _nameOfWorkController = TextEditingController();
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   // Form data storage for DPR fields
   Map<String, dynamic> _formData = {};
@@ -46,6 +48,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   void dispose() {
     _workIdController.dispose();
     _nameOfWorkController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -674,18 +677,90 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(24),
-              color: AppColors.surfaceVariant.withOpacity(0.5),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Title
                   Text(
                     'Work Entry',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
                     ),
                   ),
+                  const SizedBox(width: 24),
+                  // Search Bar
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value.toLowerCase();
+                            });
+                          },
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search fields...',
+                            hintStyle: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textTertiary,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 20,
+                              color: AppColors.textSecondary,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      size: 18,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  // Edit Button
                   Row(
                     children: [
                       if (_isEditing) ...[
@@ -694,27 +769,41 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
                             setState(() => _isEditing = false);
                             _loadData();
                           },
-                          icon: const Icon(Icons.close),
+                          icon: const Icon(Icons.close, size: 18),
                           label: const Text('Cancel'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
                           onPressed: _saveData,
-                          icon: const Icon(Icons.save),
+                          icon: const Icon(Icons.save, size: 18),
                           label: const Text('Save Draft'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.info,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                           ),
                         ),
                       ] else ...[
                         ElevatedButton.icon(
                           onPressed: () => setState(() => _isEditing = true),
-                          icon: const Icon(Icons.edit),
+                          icon: const Icon(Icons.edit, size: 18),
                           label: const Text('Edit'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                           ),
                         ),
                       ],
