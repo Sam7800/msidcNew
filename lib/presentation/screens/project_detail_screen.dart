@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../../data/models/project.dart';
-import '../widgets/module_tabs/dpr_tab.dart';
-import '../widgets/module_tabs/work_tab.dart';
-import '../widgets/module_tabs/monitoring_tab.dart';
 import '../widgets/module_tabs/work_entry_tab.dart';
+import '../widgets/module_tabs/review_tab.dart';
 
-/// Project Detail Screen - Shows 4 module tabs for selected project
+/// Project Detail Screen - Shows 2 module tabs for selected project
 ///
 /// Navigation: Categories → Projects → Details (HERE) → Module Forms
 class ProjectDetailScreen extends ConsumerStatefulWidget {
@@ -30,7 +28,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -117,69 +115,56 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen>
             ),
           ],
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.border,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: categoryColor,
+              indicatorWeight: 3,
+              labelColor: categoryColor,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelPadding: EdgeInsets.zero,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.edit_document, size: 20),
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                  text: 'Work Entry',
+                ),
+                Tab(
+                  icon: Icon(Icons.dashboard_customize, size: 20),
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                  text: 'Review',
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           WorkEntryTab(projectId: widget.project.id!),
-          DPRTab(projectId: widget.project.id!),
-          WorkTab(projectId: widget.project.id!),
-          MonitoringTab(projectId: widget.project.id!),
+          ReviewTab(projectId: widget.project.id!),
         ],
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border(
-            top: BorderSide(
-              color: AppColors.border,
-              width: 1,
-            ),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: TabBar(
-            controller: _tabController,
-            indicatorColor: categoryColor,
-            indicatorWeight: 2,
-            labelColor: categoryColor,
-            unselectedLabelColor: AppColors.textSecondary,
-            labelPadding: EdgeInsets.zero,
-            indicatorSize: TabBarIndicatorSize.label,
-            labelStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.edit_document, size: 20),
-                iconMargin: EdgeInsets.only(bottom: 2),
-                text: 'Work Entry',
-              ),
-              Tab(
-                icon: Icon(Icons.document_scanner, size: 20),
-                iconMargin: EdgeInsets.only(bottom: 2),
-                text: 'DPR',
-              ),
-              Tab(
-                icon: Icon(Icons.work, size: 20),
-                iconMargin: EdgeInsets.only(bottom: 2),
-                text: 'Work',
-              ),
-              Tab(
-                icon: Icon(Icons.analytics, size: 20),
-                iconMargin: EdgeInsets.only(bottom: 2),
-                text: 'Monitoring',
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -25,12 +25,15 @@ class AppColors {
   static const Color surface = Color(0xFFFFFFFF); // Pure white
   static const Color surfaceVariant = Color(0xFFF1F5F9); // Light blue-grey
   static const Color surfaceDark = Color(0xFF1A1C1E); // Dark mode surface
+  static const Color cardBackground = Color(0xFFFFFFFF); // Card background
+  static const Color white = Color(0xFFFFFFFF); // Pure white
 
   // Status colors - Professional & clear (less vibrant)
   static const Color success = Color(0xFF10B981); // Emerald green - professional
   static const Color warning = Color(0xFFF59E0B); // Warm amber
   static const Color error = Color(0xFFEF4444); // Softer red
   static const Color info = Color(0xFF52525B); // Grey for info (not bright blue)
+  static const Color milestone = Color(0xFF8B5CF6); // Purple for milestones
 
   // Category colors - Distinctive but professional (reduced saturation)
   static const Color categoryNashik = Color(0xFF3B82F6); // Professional Blue
@@ -52,6 +55,7 @@ class AppColors {
   static const Color borderStrong = Color(0xFFD4D4D8); // Emphasized border
   static const Color borderLight = Color(0xFFF4F4F5); // Subtle border
   static const Color outline = Color(0xFFA1A1AA); // Outline color
+  static const Color divider = Color(0xFFE4E4E7); // Divider color (same as border)
 
   // Hover & Interactive states
   static const Color hover = Color(0xFFF1F5F9); // Hover background
@@ -78,6 +82,10 @@ class AppColors {
   static const Color shadow = Color(0x08000000); // 5% black - very subtle
   static const Color shadowLight = Color(0x05000000); // 3% black - barely visible
   static const Color shadowMedium = Color(0x0A000000); // 6% black
+  static const Color shadowColor = Color(0x1A000000); // 10% black for card shadows
+
+  // Accent color (for general use)
+  static const Color accent = Color(0xFF06B6D4); // Cyan accent
 
   /// Get category color by name
   static Color getCategoryColor(String category) {
