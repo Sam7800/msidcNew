@@ -16,7 +16,8 @@ class AADetailComponent extends BaseReviewComponent {
 
   @override
   Widget buildContent(BuildContext context) {
-    final status = data['aa_status']?.toString().toLowerCase() ?? '';
+    // Use standardized field name 'status' (automatically mapped from 'aa_status')
+    final status = data['status']?.toString().toLowerCase() ?? '';
     final isAccorded = status.contains('accord');
 
     if (isAccorded) {
@@ -33,25 +34,9 @@ class AADetailComponent extends BaseReviewComponent {
         buildSectionHeader('Status: Awaited'),
         const SizedBox(height: 12),
 
-        buildFieldRow('proposed_amount', label: 'Proposed Amount'),
-        buildFieldRow('proposal_date', label: 'Date of Proposal'),
-        buildFieldRow('pending_with', label: 'Pending With'),
-
-        if (!ComponentStatusUtils.hasValue(data['proposed_amount']) &&
-            !ComponentStatusUtils.hasValue(data['proposal_date']) &&
-            !ComponentStatusUtils.hasValue(data['pending_with'])) ...[
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'AA awaiting approval - details pending',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        ],
+        buildFieldRow('proposed_amount', label: 'Proposed Amount', placeholder: '₹ 0'),
+        buildFieldRow('proposal_date', label: 'Date of Proposal', placeholder: 'Not set'),
+        buildFieldRow('pending_with', label: 'Pending With', placeholder: 'Not specified'),
       ],
     );
   }
@@ -63,41 +48,46 @@ class AADetailComponent extends BaseReviewComponent {
         buildSectionHeader('Status: Accorded'),
         const SizedBox(height: 12),
 
-        buildFieldRow('aa_amount', label: 'Amount'),
-        buildFieldRow('aa_number', label: 'AA No.'),
-        buildFieldRow('aa_sanctioned_date', label: 'Date'),
+        // Use standardized field name 'amount' (mapped from 'aa_amount')
+        buildFieldRow('amount', label: 'Amount', placeholder: '₹ 0'),
+        buildFieldRow('number', label: 'AA No.', placeholder: 'Not assigned'), // NEW
+        buildFieldRow('date', label: 'AA Date', placeholder: 'Not set'), // NEW
 
         buildDivider(),
 
+        // Use standardized field name 'broad_scope' (mapped from 'broad_scope_aa')
         buildSectionHeader('Broad Scope'),
         const SizedBox(height: 8),
-
-        if (ComponentStatusUtils.hasValue(data['broad_scope_aa'])) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Text(
-              data['broad_scope_aa'].toString(),
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
-            ),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
           ),
-        ] else ...[
-          Text(
-            'No scope details available',
+          child: Text(
+            ComponentStatusUtils.hasValue(data['broad_scope'])
+                ? data['broad_scope'].toString()
+                : 'No broad scope description provided',
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
-              fontStyle: FontStyle.italic,
+              color: ComponentStatusUtils.hasValue(data['broad_scope'])
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary.withOpacity(0.6),
+              fontStyle: ComponentStatusUtils.hasValue(data['broad_scope'])
+                  ? FontStyle.normal
+                  : FontStyle.italic,
             ),
           ),
-        ],
+        ),
+
+        buildDivider(),
+
+        buildSectionHeader('Responsibility'),
+        // Use standardized field names (mapped from aa_person_responsible, etc.)
+        buildFieldRow('person_responsible', label: 'Person Responsible', placeholder: 'Not assigned'),
+        buildFieldRow('post_held', label: 'Post Held', placeholder: 'Not specified'),
+        buildFieldRow('pending_with', label: 'Pending With', placeholder: 'Not specified'),
       ],
     );
   }

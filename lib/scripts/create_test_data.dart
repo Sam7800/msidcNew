@@ -1,208 +1,49 @@
 import 'dart:convert';
-import '../database/database_helper.dart';
-import '../../data/models/project.dart';
+import '../core/database/database_helper.dart';
 
-/// Service to generate sample data for testing
-class SampleDataService {
-  final DatabaseHelper _dbHelper;
+/// Script to create comprehensive test data for review screen testing
+///
+/// Creates:
+/// 1. Test Category
+/// 2. Test Project
+/// 3. Fully populated Work Entry with ALL fields
+Future<void> main() async {
+  print('Starting test data creation...\n');
 
-  SampleDataService(this._dbHelper);
+  final dbHelper = DatabaseHelper.instance;
+  final db = await dbHelper.database;
 
-  /// Helper: Get category ID by name
-  Future<int?> _getCategoryIdByName(String categoryName) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
-      'categories',
-      columns: ['id'],
-      where: 'name = ?',
-      whereArgs: [categoryName.trim()],
-    );
-    return result.isEmpty ? null : result.first['id'] as int;
-  }
+  try {
+    // Step 1: Create Test Category
+    print('Step 1: Creating Test Category...');
+    final categoryResult = await db.insert('categories', {
+      'name': 'Test Category',
+      'description': 'Category for comprehensive testing of review screen fields',
+      'color_hex': '#FF6B6B',
+      'icon_name': 'science',
+      'display_order': 99,
+      'is_active': 1,
+    });
+    print('✓ Category created with ID: $categoryResult\n');
 
-  /// Generate sample projects for all 5 categories
-  Future<Map<String, dynamic>> generateSampleData() async {
-    try {
-      final db = await _dbHelper.database;
-      int projectCount = 0;
+    // Step 2: Create Test Project
+    print('Step 2: Creating Test Project...');
+    final projectResult = await db.insert('projects', {
+      'sr_no': 999,
+      'name': 'Test Project - Full Data Population',
+      'category_id': categoryResult,
+      'broad_scope': 'Comprehensive test project with all fields populated for review screen validation',
+      'location': 'Test Location, Maharashtra',
+      'status': 'In Progress',
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+    print('✓ Project created with ID: $projectResult\n');
 
-      // Sample projects for each category
-      final sampleProjects = [
-        // Nashik Kumbhmela (1-8)
-        {'srNo': 1, 'name': 'Dwarka Circle Development', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 2, 'name': 'Darshan Path Construction', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 3, 'name': 'Ghat Development Project', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 4, 'name': 'Ring Road UDD', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 5, 'name': 'Ring Road NHAI', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 6, 'name': 'Nashik Airport Expansion', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 7, 'name': 'Mining Corridor Development', 'category': 'Nashik Kumbhmela'},
-        {'srNo': 8, 'name': 'Trimbak DP Road', 'category': 'Nashik Kumbhmela'},
-
-        // HAM Projects (9-10)
-        {'srNo': 9, 'name': 'HAM-2 Road Furniture', 'category': 'HAM Projects'},
-        {'srNo': 10, 'name': 'HAM-3 10,000 Km Road Network', 'category': 'HAM Projects'},
-
-        // Nagpur Works (11-24)
-        {'srNo': 11, 'name': 'Nagpur Central Jail', 'category': 'Nagpur Works'},
-        {'srNo': 12, 'name': 'Nagpur Vidhan Bhavan', 'category': 'Nagpur Works'},
-        {'srNo': 13, 'name': 'PKV Stage I', 'category': 'Nagpur Works'},
-        {'srNo': 14, 'name': 'PKV Stage II', 'category': 'Nagpur Works'},
-        {'srNo': 15, 'name': 'Social Justice Works', 'category': 'Nagpur Works'},
-        {'srNo': 16, 'name': 'CSN Surgical Building', 'category': 'Nagpur Works'},
-        {'srNo': 17, 'name': 'Collector Office Complex', 'category': 'Nagpur Works'},
-        {'srNo': 18, 'name': 'Ganesh Peth Market', 'category': 'Nagpur Works'},
-        {'srNo': 19, 'name': 'MOR Bhavan', 'category': 'Nagpur Works'},
-        {'srNo': 20, 'name': 'Market Site Development 1', 'category': 'Nagpur Works'},
-        {'srNo': 21, 'name': 'Market Site Development 2', 'category': 'Nagpur Works'},
-        {'srNo': 22, 'name': 'IMS Ajani', 'category': 'Nagpur Works'},
-        {'srNo': 23, 'name': 'Kamal Chowk', 'category': 'Nagpur Works'},
-        {'srNo': 24, 'name': 'MIHAN Development', 'category': 'Nagpur Works'},
-
-        // NHAI Projects (25-28)
-        {'srNo': 25, 'name': 'Pune Shirur Elevated Road', 'category': 'NHAI Projects'},
-        {'srNo': 26, 'name': 'Talegaon Chakan Shikrapur Road', 'category': 'NHAI Projects'},
-        {'srNo': 27, 'name': 'Hadapsar Yawat Road', 'category': 'NHAI Projects'},
-        {'srNo': 28, 'name': 'Kalamboli Fly-over', 'category': 'NHAI Projects'},
-
-        // Other Projects (29-34)
-        {'srNo': 29, 'name': 'Dharashiv Medical College', 'category': 'Other Projects'},
-        {'srNo': 30, 'name': 'Police Housing Complex', 'category': 'Other Projects'},
-        {'srNo': 31, 'name': 'Savali Vihir Development', 'category': 'Other Projects'},
-        {'srNo': 32, 'name': 'Akola Infrastructure', 'category': 'Other Projects'},
-        {'srNo': 33, 'name': 'FCI Godown Construction', 'category': 'Other Projects'},
-        {'srNo': 34, 'name': 'Cultural Department Complex', 'category': 'Other Projects'},
-      ];
-
-      // Insert sample projects
-      for (var projectData in sampleProjects) {
-        try {
-          // Get category ID
-          final categoryId = await _getCategoryIdByName(projectData['category'] as String);
-          if (categoryId == null) {
-            print('Warning: Category "${projectData['category']}" not found, skipping project ${projectData['srNo']}');
-            continue;
-          }
-
-          await db.insert('projects', {
-            'sr_no': projectData['srNo'],
-            'name': projectData['name'],
-            'category_id': categoryId,
-            'broad_scope': 'Infrastructure development project for ${projectData['name']}',
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-          projectCount++;
-        } catch (e) {
-          print('Error inserting project ${projectData['srNo']}: $e');
-        }
-      }
-
-      return {
-        'success': true,
-        'message': 'Sample data generated successfully',
-        'projects': projectCount,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Failed to generate sample data: ${e.toString()}',
-      };
-    }
-  }
-
-  /// Generate comprehensive test project with ALL fields populated
-  /// For testing review screen field display
-  Future<Map<String, dynamic>> generateTestProject() async {
-    try {
-      final db = await _dbHelper.database;
-
-      // Step 1: Create Test Category
-      print('Creating Test Category...');
-      int categoryId;
-      try {
-        categoryId = await db.insert('categories', {
-          'name': 'Test Category',
-          'description': 'Category for comprehensive testing of review screen fields',
-          'color_hex': '#FF6B6B',
-          'icon_name': 'science',
-          'display_order': 99,
-          'is_active': 1,
-        });
-      } catch (e) {
-        // Category might already exist
-        final existing = await _getCategoryIdByName('Test Category');
-        if (existing == null) rethrow;
-        categoryId = existing;
-        print('Test Category already exists, using ID: $categoryId');
-      }
-
-      // Step 2: Create Test Project (delete existing if present)
-      print('Creating Test Project...');
-
-      // Delete existing test project if present
-      await db.delete('projects', where: 'sr_no = ?', whereArgs: [999]);
-
-      final projectId = await db.insert('projects', {
-        'sr_no': 999,
-        'name': 'Test Project - Full Data Population',
-        'category_id': categoryId,
-        'broad_scope': 'Comprehensive test project with all fields populated for review screen validation',
-        'location': 'Test Location, Maharashtra',
-        'status': 'In Progress',
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-      print('Project created with ID: $projectId');
-
-      // Step 3: Build comprehensive test data (continues below...)
-      print('Building comprehensive test data...');
-
-      final dprSection = _buildTestDPRSection();
-      final workSection = _buildTestWorkSection();
-      final pmsSection = _buildTestPMSSection();
-
-      // Step 4: Insert Work Entry
-      print('Inserting Work Entry...');
-      final workEntryId = await db.insert('work_entry', {
-        'project_id': projectId,
-        'work_id': 'TEST-WRK-999',
-        'name_of_work': 'Comprehensive Test Infrastructure Development Project',
-        'person_responsible': 'Mr. Test Engineer',
-        'post_held': 'Executive Engineer',
-        'pending_with': 'Quality Control Department',
-        'dpr_section': jsonEncode(dprSection),
-        'work_section': jsonEncode(workSection),
-        'pms_section': jsonEncode(pmsSection),
-        'is_draft': 0,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-
-      print('Test project creation completed successfully!');
-      print('Fields populated: ${dprSection.length + workSection.length + pmsSection.length}');
-
-      return {
-        'success': true,
-        'message': 'Test project created successfully',
-        'category_id': categoryId,
-        'project_id': projectId,
-        'work_entry_id': workEntryId,
-        'fields_populated': dprSection.length + workSection.length + pmsSection.length,
-      };
-    } catch (e, stackTrace) {
-      print('ERROR creating test project: $e');
-      print('Stack trace: $stackTrace');
-      return {
-        'success': false,
-        'message': 'Failed to create test project: ${e.toString()}',
-        'error': e.toString(),
-        'stack': stackTrace.toString(),
-      };
-    }
-  }
-
-  Map<String, dynamic> _buildTestDPRSection() {
-    return {
+    // Step 3: Create comprehensive DPR Section data
+    print('Step 3: Building DPR Section data...');
+    final dprSection = {
+      // Administrative Approval - Awaited state
       'aa_status': 'Accorded',
       'aa_amount': 125.5,
       'aa_number': 'AA/TEST/2024/001',
@@ -211,6 +52,8 @@ class SampleDataService {
       'aa_proposal_date': '2023-12-01',
       'aa_pending_with': 'Chief Engineer',
       'broad_scope_aa': 'Development of test infrastructure including roads, bridges, and utilities',
+
+      // DPR Details
       'dpr_status': 'Approved',
       'dpr_name': 'DPR for Test Infrastructure Development',
       'broad_scope_dpr': 'Detailed project report covering all aspects of infrastructure development',
@@ -218,6 +61,8 @@ class SampleDataService {
       'dpr_submitted_date': '2024-02-20',
       'dpr_approved_date': '2024-03-10',
       'likely_completion_date': '2024-04-30',
+
+      // BOQ
       'boq_status': 'Completed',
       'likely_completion': '2024-03-25',
       'boq_items': jsonEncode([
@@ -227,34 +72,50 @@ class SampleDataService {
         {'srNo': 4, 'item': 'Bituminous Road', 'quantity': 12, 'unit': 'km', 'rate': 4500000, 'amount': 54000000},
         {'srNo': 5, 'item': 'Drainage System', 'quantity': 8, 'unit': 'km', 'rate': 2500000, 'amount': 20000000},
       ]),
+
+      // Schedules, Drawings, Bid Documents
       'schedules_status': 'Approved',
       'drawings_status': 'Approved',
       'bid_documents_status': 'Completed',
+
+      // Environmental Clearance
       'env_clearance_status': 'Applicable',
       'env_status': 'Applicable',
       'env_proposal_submitted_date': '2024-01-20',
       'env_status_description': 'Under review by State Environment Department',
+
+      // Land Acquisition
       'land_acquisition_status': 'Applicable',
       'la_status': 'Applicable',
       'la_proposal_submitted_date': '2024-01-25',
       'la_status_description': 'Compensation disbursement in progress',
+
+      // Utility Shifting
       'utility_shifting_status': 'Applicable',
       'utility_status': 'Applicable',
       'utility_proposal_submitted_date': '2024-02-01',
       'utility_status_description': 'Coordination with MSEDCL ongoing',
+
+      // DPR Bid Process
       'dpr_bid_doc_status': 'Completed',
       'invite_dpr_bid_status': 'Issued',
       'invite_dpr_bid_date': '2023-10-15',
       'prebid_meeting_date': '2023-10-25',
       'prebid_participants': 15,
       'prebid_written_applications': 8,
+
+      // CSD
       'csd_status': 'CSD uploaded',
       'csd_date': '2023-11-05',
+
+      // Bid Submission
       'bid_submission_date': '2023-11-15',
       'bid_submission_status': 'Completed',
       'bid_submission_number_of_bidders': 12,
       'bid_submission_emd_verified': 'Yes',
       'bid_submission_emd_total_amount': 2500000,
+
+      // Technical Evaluation
       'tech_eval_status': 'Completed',
       'tech_eval_qualified': 8,
       'tech_eval_likely_completion': '2023-11-30',
@@ -263,15 +124,22 @@ class SampleDataService {
       'tech_eval_person_responsible': 'Mr. Rajesh Kumar',
       'tech_eval_post_held': 'Superintending Engineer',
       'tech_eval_pending_with': 'Finance Department',
+
+      // Financial Bid
       'fin_opening_date': '2023-12-10',
       'fin_opening_bid': 'L1',
       'fin_opening_amount': 98500000,
       'fin_opening_variance': -2.5,
       'fin_bid_qualified_count': 8,
+
+      // Bid Acceptance
       'bid_acceptance_status': 'Approved',
       'bid_acceptance_amount': 98500000,
+
+      // LOA
       'loa_status': 'Issued',
       'loa_date': '2023-12-20',
+      'loa_not_issued_reasons': null,
       'loa_issue_date': '2023-12-20',
       'loa_number': 'LOA/TEST/2023/042',
       'loa_contractor_name': 'Test Infrastructure Builders Ltd',
@@ -279,32 +147,46 @@ class SampleDataService {
       'loa_validity_period': '90 days',
       'loa_valid_until': '2024-03-20',
       'loa_remarks': 'All documents verified and approved',
+
+      // PBG
       'pbg_status': 'Submitted',
       'pbg_amount': 9850000,
       'pbg_date': '2024-01-10',
       'pbg_period': '60 months',
     };
-  }
+    print('✓ DPR Section populated (${dprSection.length} fields)\n');
 
-  Map<String, dynamic> _buildTestWorkSection() {
-    return {
+    // Step 4: Create comprehensive Work Section data
+    print('Step 4: Building Work Section data...');
+    final workSection = {
+      // Technical Sanction
       'tech_sanction_status': 'Accorded',
       'tech_sanction_amount': 98500000,
       'ts_number': 'TS/TEST/2024/015',
       'ts_date': '2024-01-05',
+      'ts_likely_submission_date': null,
+
+      // NIT
       'nit_status': 'Issued',
       'nit_date': '2024-01-20',
       'nit_amount': 98500000,
+      'nit_likely_issue_date': null,
       'nit_items': jsonEncode([
         {'srNo': 1, 'item': 'Civil Works', 'amount': 65000000},
         {'srNo': 2, 'item': 'Road Construction', 'amount': 25000000},
         {'srNo': 3, 'item': 'Drainage & Utilities', 'amount': 8500000},
       ]),
+
+      // Pre-bid
       'prebid_date': '2024-01-28',
       'prebid_participants_count': 18,
       'written_applications': 12,
+
+      // Bid Submission (Work)
       'work_bid_submission_date': '2024-02-10',
       'work_bid_submission_count': 15,
+
+      // Work Order
       'work_order_status': 'Issued',
       'work_order_date': '2024-02-25',
       'work_order_amount': 98500000,
@@ -312,14 +194,19 @@ class SampleDataService {
       'work_order_period': 24,
       'wo_number': 'WO/TEST/2024/007',
       'contractor_name': 'Test Infrastructure Builders Ltd',
+      'not_issued_reasons': null,
     };
-  }
+    print('✓ Work Section populated (${workSection.length} fields)\n');
 
-  Map<String, dynamic> _buildTestPMSSection() {
-    return {
+    // Step 5: Create comprehensive PMS Section data
+    print('Step 5: Building PMS Section data...');
+    final pmsSection = {
+      // Agreement & Basic Info
       'agreement_amount': 98500000,
       'appointed_date': '2024-03-01',
       'tender_period': 24,
+
+      // Milestone 1
       'milestone_1_period': 6,
       'milestone_1_physical_target': 20,
       'milestone_1_target_amount': 19700000,
@@ -329,6 +216,8 @@ class SampleDataService {
       'milestone_1_target_date': '2024-09-01',
       'milestone_1_achieved_date': '2024-08-25',
       'milestone_1_remarks': 'Completed ahead of schedule',
+
+      // Milestone 2
       'milestone_2_period': 12,
       'milestone_2_physical_target': 40,
       'milestone_2_target_amount': 39400000,
@@ -336,21 +225,43 @@ class SampleDataService {
       'milestone_2_achievement_amount': 37430000,
       'milestone_2_status': 'In Progress',
       'milestone_2_target_date': '2025-03-01',
+      'milestone_2_achieved_date': null,
+      'milestone_2_remarks': 'On track',
+
+      // Milestone 3
       'milestone_3_period': 18,
       'milestone_3_physical_target': 60,
       'milestone_3_target_amount': 59100000,
+      'milestone_3_physical_achieved': null,
+      'milestone_3_achievement_amount': null,
       'milestone_3_status': 'Awaited',
       'milestone_3_target_date': '2025-09-01',
+      'milestone_3_achieved_date': null,
+      'milestone_3_remarks': null,
+
+      // Milestone 4
       'milestone_4_period': 21,
       'milestone_4_physical_target': 80,
       'milestone_4_target_amount': 78800000,
+      'milestone_4_physical_achieved': null,
+      'milestone_4_achievement_amount': null,
       'milestone_4_status': 'Awaited',
       'milestone_4_target_date': '2025-12-01',
+      'milestone_4_achieved_date': null,
+      'milestone_4_remarks': null,
+
+      // Milestone 5
       'milestone_5_period': 24,
       'milestone_5_physical_target': 100,
       'milestone_5_target_amount': 98500000,
+      'milestone_5_physical_achieved': null,
+      'milestone_5_achievement_amount': null,
       'milestone_5_status': 'Awaited',
       'milestone_5_target_date': '2026-03-01',
+      'milestone_5_achieved_date': null,
+      'milestone_5_remarks': null,
+
+      // LD (Liquidated Damages)
       'ld_status': 'Applicable',
       'ld_amount_imposed': 150000,
       'ld_amount_per_week': 25000,
@@ -359,6 +270,8 @@ class SampleDataService {
       'ld_amount_released': 0,
       'ld_final_recovered': 0,
       'ld_remarks': 'Deposited in escrow account pending progress achievement',
+
+      // EOT (Extension of Time)
       'eot_status': 'Applicable',
       'eot_period_submitted': 3,
       'eot_period_approved': 2,
@@ -370,6 +283,10 @@ class SampleDataService {
       'ld_terms_without_ld': 'No',
       'ld_terms_with_ld': 'Yes',
       'compensation_payable': 'No',
+      'compensation_claimed': null,
+      'compensation_admitted': null,
+
+      // COS (Change of Scope)
       'cos_status': 'Applicable',
       'cos_submitted_date': '2024-07-20',
       'cos_proposed_items': jsonEncode([
@@ -379,8 +296,12 @@ class SampleDataService {
       'cos_approved_items': jsonEncode([
         {'srNo': 1, 'description': 'Street lighting', 'amount': 2500000, 'period': 2, 'approvedDate': '2024-06-15', 'number': 'COS/001', 'date': '2024-06-15', 'remarks': 'Approved'},
       ]),
+
+      // Cumulative Expenditure
       'expenditure_amount': 59100000,
       'expenditure_percentage': 60.0,
+
+      // Audit Para
       'audit_para_status': 'Applicable',
       'audit_para_draft_count': 5,
       'audit_para_responsible_person': 'CA Suresh Patil',
@@ -396,6 +317,8 @@ class SampleDataService {
       'audit_para_closed_items': jsonEncode([
         {'srNo': 1, 'paraNo': 'AP-03', 'date': '2024-08-01', 'remarks': 'Satisfactory compliance'},
       ]),
+
+      // LAQ (Legislative Assembly Questions)
       'laq_status': 'Applicable',
       'laq_count': 8,
       'lcq_count': 3,
@@ -415,18 +338,24 @@ class SampleDataService {
       'laq_compliance_items': jsonEncode([
         {'srNo': 1, 'promiseNo': 'P-01', 'status': 'In progress', 'date': '2024-08-15', 'remarks': 'On track'},
       ]),
+
+      // Technical Audit
       'tech_audit_status': 'Carried Out',
       'tech_audit_findings_count': 7,
       'tech_audit_findings_details': 'Quality issues in concrete finishing, minor deviations in drainage alignment',
       'responsible_ee': 'Mr. Anil Deshmukh, EE (Civil)',
       'compliance_count': 5,
       'compliance_dates': '2024-08-20, 2024-09-10',
+
+      // Revised AA
       'rev_aa_status': 'Necessary',
       'rev_aa_reasons': 'Scope enhancement due to COS and price escalation',
       'rev_aa_amount_proposed': 112000000,
       'rev_aa_status_detail': 'Submitted',
       'rev_aa_number': 'RAA/TEST/2024/003',
       'rev_aa_date': '2024-09-15',
+
+      // Supplementary Agreement
       'suppl_agreement_status': 'Applicable',
       'suppl_agreement_necessity': 'Additional scope approved through COS',
       'suppl_agreement_amount': 8500000,
@@ -436,19 +365,50 @@ class SampleDataService {
       'period': 4,
       'suppl_agreement_remarks': 'Executed with mutual consent',
     };
-  }
+    print('✓ PMS Section populated (${pmsSection.length} fields)\n');
 
-  /// Clear all data from database
-  Future<void> clearAllData() async {
-    try {
-      final db = await _dbHelper.database;
-      await db.delete('projects');
-      await db.delete('dpr_data');
-      await db.delete('work_data');
-      await db.delete('monitoring_data');
-      await db.delete('work_entry');
-    } catch (e) {
-      print('Error clearing data: $e');
-    }
+    // Step 6: Insert Work Entry
+    print('Step 6: Creating Work Entry record...');
+    final workEntryResult = await db.insert('work_entry', {
+      'project_id': projectResult,
+      'work_id': 'TEST-WRK-999',
+      'name_of_work': 'Comprehensive Test Infrastructure Development Project',
+      'person_responsible': 'Mr. Test Engineer',
+      'post_held': 'Executive Engineer',
+      'pending_with': 'Quality Control Department',
+      'dpr_section': jsonEncode(dprSection),
+      'work_section': jsonEncode(workSection),
+      'pms_section': jsonEncode(pmsSection),
+      'is_draft': 0,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+    print('✓ Work Entry created with ID: $workEntryResult\n');
+
+    // Summary
+    print('═' * 60);
+    print('TEST DATA CREATION COMPLETED SUCCESSFULLY!');
+    print('═' * 60);
+    print('Category ID: $categoryResult');
+    print('Project ID: $projectResult');
+    print('Work Entry ID: $workEntryResult');
+    print('');
+    print('Total fields populated:');
+    print('  - DPR Section: ${dprSection.length} fields');
+    print('  - Work Section: ${workSection.length} fields');
+    print('  - PMS Section: ${pmsSection.length} fields');
+    print('  - Total: ${dprSection.length + workSection.length + pmsSection.length} fields');
+    print('');
+    print('You can now:');
+    print('1. Run the app');
+    print('2. Navigate to "Test Category" → "Test Project - Full Data Population"');
+    print('3. Open the review screen');
+    print('4. Click each button to verify all fields display correctly');
+    print('═' * 60);
+
+  } catch (e, stackTrace) {
+    print('ERROR creating test data:');
+    print(e);
+    print(stackTrace);
   }
 }

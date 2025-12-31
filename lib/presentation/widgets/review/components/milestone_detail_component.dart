@@ -14,20 +14,15 @@ class MilestoneDetailComponent extends BaseReviewComponent {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Extract milestone-specific data based on config.id
-    final msPrefix = config.id.toLowerCase().replaceAll('-', '');
-
-    final description = data['${msPrefix}_description'];
-    final targetDate = data['${msPrefix}_target_date'];
-    final targetAmount = data['${msPrefix}_target_amount'];
-    final achievementDate = data['${msPrefix}_achievement_date'];
-    final achievementAmount = data['${msPrefix}_achievement_amount'];
-    final ldImposed = data['${msPrefix}_ld_imposed'];
-    final remarks = data['${msPrefix}_remarks'];
+    // Use standardized field names (automatically mapped from ms1_*, ms2_*, etc.)
+    final description = data['description'];
+    final targetAmount = data['target_amount'];
+    final achievementAmount = data['achievement_amount'];
 
     // Calculate progress percentage
     double progressPercent = 0;
-    if (targetAmount != null && achievementAmount != null) {
+    if (ComponentStatusUtils.hasValue(targetAmount) &&
+        ComponentStatusUtils.hasValue(achievementAmount)) {
       final target = double.tryParse(targetAmount.toString()) ?? 0;
       final achievement = double.tryParse(achievementAmount.toString()) ?? 0;
       if (target > 0) {
@@ -39,51 +34,84 @@ class MilestoneDetailComponent extends BaseReviewComponent {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Description
-        if (ComponentStatusUtils.hasValue(description)) ...[
-          buildSectionHeader('Description'),
-          Text(
-            description.toString(),
+        // Description - always show with placeholder
+        buildSectionHeader('Description'),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            ComponentStatusUtils.hasValue(description)
+                ? description.toString()
+                : 'No description provided',
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.textPrimary,
+              color: ComponentStatusUtils.hasValue(description)
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary.withOpacity(0.6),
+              fontStyle: ComponentStatusUtils.hasValue(description)
+                  ? FontStyle.normal
+                  : FontStyle.italic,
             ),
           ),
-          buildDivider(),
-        ],
+        ),
 
-        // Target Information
+        buildDivider(),
+
+        // Period - NEW
+        buildFieldRow('period', label: 'Period', placeholder: 'Not specified'),
+
+        buildDivider(),
+
+        // Target Information - always show
         buildSectionHeader('Target'),
-        buildFieldRow('${msPrefix}_target_date', label: 'Target Date'),
-        buildFieldRow('${msPrefix}_target_amount', label: 'Target Amount'),
+        buildFieldRow('target_date', label: 'Target Date', placeholder: 'Not set'),
+        buildFieldRow('target_amount', label: 'Target Amount', placeholder: '₹ 0'),
+        buildFieldRow('physical_target', label: 'Physical Target (%)', placeholder: '0%'), // NEW
+
         buildDivider(),
 
-        // Achievement Information
+        // Achievement Information - always show
         buildSectionHeader('Achievement'),
-        buildFieldRow('${msPrefix}_achievement_date', label: 'Achievement Date'),
-        buildFieldRow('${msPrefix}_achievement_amount', label: 'Achievement Amount'),
+        buildFieldRow('achievement_date', label: 'Achievement Date', placeholder: 'Not achieved yet'),
+        buildFieldRow('achievement_amount', label: 'Achievement Amount', placeholder: '₹ 0'),
+        buildFieldRow('physical_achieved', label: 'Physical Achieved (%)', placeholder: '0%'), // NEW
 
-        // Progress bar
-        if (targetAmount != null && achievementAmount != null) ...[
-          const SizedBox(height: 16),
-          buildProgressBar(progressPercent),
-        ],
+        // Progress bar - always show
+        const SizedBox(height: 16),
+        buildProgressBar(progressPercent),
 
         buildDivider(),
 
-        // LD and Remarks
-        buildFieldRow('${msPrefix}_ld_imposed', label: 'LD Imposed'),
-        if (ComponentStatusUtils.hasValue(remarks)) ...[
-          const SizedBox(height: 12),
-          buildSectionHeader('Remarks'),
-          Text(
-            remarks.toString(),
+        // Responsibility - always show
+        buildSectionHeader('Responsibility'),
+        buildFieldRow('person_responsible', label: 'Person Responsible', placeholder: 'Not assigned'),
+        buildFieldRow('post_held', label: 'Post Held', placeholder: 'Not specified'),
+        buildFieldRow('pending_with', label: 'Pending With', placeholder: 'Not specified'),
+
+        buildDivider(),
+
+        // LD - always show
+        buildFieldRow('ld_imposed', label: 'LD Imposed', placeholder: 'Not Applicable'),
+
+        // Remarks - always show with placeholder
+        const SizedBox(height: 12),
+        buildSectionHeader('Remarks'),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            ComponentStatusUtils.hasValue(data['remarks'])
+                ? data['remarks'].toString()
+                : 'No remarks',
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: ComponentStatusUtils.hasValue(data['remarks'])
+                  ? AppColors.textSecondary
+                  : AppColors.textSecondary.withOpacity(0.6),
+              fontStyle: ComponentStatusUtils.hasValue(data['remarks'])
+                  ? FontStyle.normal
+                  : FontStyle.italic,
             ),
           ),
-        ],
+        ),
       ],
     );
   }

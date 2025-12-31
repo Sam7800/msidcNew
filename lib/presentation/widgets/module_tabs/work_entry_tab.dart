@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../theme/app_colors.dart';
 import '../../../data/models/work_entry_data.dart';
 import '../../providers/repository_providers.dart';
+import '../../providers/review_providers.dart';
 import 'package:intl/intl.dart';
 
 /// Work Entry Tab - Complete DPR form with all fields
@@ -161,10 +162,19 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
         _workIdController.text = data.workId ?? '';
         _nameOfWorkController.text = data.nameOfWork ?? '';
 
+        // Load PMS section with 'pms_' prefix for form fields
+        // Also map '_amount' back to '_amt' for form compatibility
+        final pmsFormData = <String, dynamic>{};
+        data.pmsSection.forEach((key, value) {
+          String formKey = 'pms_$key';
+          formKey = formKey.replaceAll('_amount', '_amt');
+          pmsFormData[formKey] = value;
+        });
+
         _formData = {
           ...data.dprSection,
           ...data.workSection,
-          ...data.pmsSection,
+          ...pmsFormData,
         };
         print('[WorkEntryTab] Loaded data - DPR: ${data.dprSection.length} fields, Work: ${data.workSection.length} fields, PMS: ${data.pmsSection.length} fields, isDraft: ${data.isDraft}');
       } else {
@@ -203,6 +213,10 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     print('[WorkEntryTab] Saving draft - ID: ${updatedData.id}, isDraft: ${updatedData.isDraft}');
     await repository.saveDraft(updatedData);
     print('[WorkEntryTab] Draft saved successfully');
+
+    // Invalidate the work entry data provider to refresh Review screen
+    ref.invalidate(workEntryDataProvider(widget.projectId));
+    print('[WorkEntryTab] Invalidated workEntryDataProvider - Review screen will auto-refresh');
 
     setState(() => _isEditing = false);
     print('[WorkEntryTab] Reloading data after save');
@@ -752,7 +766,11 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     final pmsData = <String, dynamic>{};
     for (final key in pmsKeys) {
       if (_formData.containsKey(key)) {
-        pmsData[key] = _formData[key];
+        // Strip 'pms_' prefix since these fields go into pmsSection
+        // Also map '_amt' to '_amount' for consistency
+        String cleanKey = key.replaceFirst('pms_', '');
+        cleanKey = cleanKey.replaceAll('_amt', '_amount');
+        pmsData[cleanKey] = _formData[key];
       }
     }
     return pmsData;

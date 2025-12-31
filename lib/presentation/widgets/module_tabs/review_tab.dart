@@ -29,50 +29,15 @@ class ReviewTab extends ConsumerStatefulWidget {
 }
 
 class _ReviewTabState extends ConsumerState<ReviewTab> {
-  WorkEntryData? _workEntryData;
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadWorkEntryData();
-  }
-
-  /// Load work entry data (prioritize draft, fallback to final)
-  Future<void> _loadWorkEntryData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final repository = ref.read(workEntryRepositoryProvider);
-      final data =
-          await repository.getWorkEntryOrDraftByProjectId(widget.projectId);
-
-      setState(() {
-        _workEntryData = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load work entry data: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+    // Watch the work entry data provider - automatically refreshes on invalidation
+    final workEntryAsync = ref.watch(workEntryDataProvider(widget.projectId));
 
-    if (_errorMessage != null) {
-      return Center(
+    return workEntryAsync.when(
+      data: (workEntryData) => _buildReviewContent(context, workEntryData),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -83,7 +48,7 @@ class _ReviewTabState extends ConsumerState<ReviewTab> {
             ),
             const SizedBox(height: 16),
             Text(
-              _errorMessage!,
+              'Failed to load work entry data: $error',
               style: TextStyle(
                 color: AppColors.error,
                 fontSize: 16,
@@ -92,21 +57,26 @@ class _ReviewTabState extends ConsumerState<ReviewTab> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _loadWorkEntryData,
+              onPressed: () {
+                // Invalidate to retry
+                ref.invalidate(workEntryDataProvider(widget.projectId));
+              },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    if (_workEntryData == null) {
+  Widget _buildReviewContent(BuildContext context, WorkEntryData? workEntryData) {
+    if (workEntryData == null) {
       return _buildEmptyState();
     }
 
     return ReviewSectionGrid(
-      workEntryData: _workEntryData!,
+      workEntryData: workEntryData,
     );
   }
 

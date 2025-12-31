@@ -1,5 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/review_section.dart';
+import '../../data/models/work_entry_data.dart';
+import 'repository_providers.dart';
+
+/// Provider for work entry data by project ID
+///
+/// This provider automatically refreshes when invalidated, enabling
+/// real-time sync between Work Entry form and Review screen
+///
+/// Usage:
+/// ```dart
+/// final workEntryAsync = ref.watch(workEntryDataProvider(projectId));
+/// workEntryAsync.when(
+///   data: (workEntry) => ...,
+///   loading: () => CircularProgressIndicator(),
+///   error: (err, stack) => Text('Error: $err'),
+/// );
+/// ```
+///
+/// To trigger refresh after save:
+/// ```dart
+/// await repository.saveDraft(...);
+/// ref.invalidate(workEntryDataProvider(projectId));
+/// ```
+final workEntryDataProvider = FutureProvider.family<WorkEntryData?, int>((ref, projectId) async {
+  final repository = ref.watch(workEntryRepositoryProvider);
+  return await repository.getWorkEntryOrDraftByProjectId(projectId);
+});
 
 /// Provider for managing which cards are currently expanded in the Review screen
 ///

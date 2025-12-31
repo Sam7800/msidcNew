@@ -30,11 +30,8 @@ abstract class BaseReviewComponent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Check if component has any data
-    if (!ReviewComponentMapper.hasData(data)) {
-      return _buildEmptyState();
-    }
-
+    // Always show content with placeholders for empty fields
+    // This allows users to see what data is available even when fields are empty
     return buildContent(context);
   }
 
@@ -70,17 +67,15 @@ abstract class BaseReviewComponent extends StatelessWidget {
   // ============================================================
 
   /// Build a field row (label: value)
-  Widget buildFieldRow(String fieldKey, {String? label, bool showIfNull = false}) {
+  /// Now always shows fields with placeholders when empty
+  Widget buildFieldRow(String fieldKey, {String? label, String? placeholder}) {
     final value = data[fieldKey];
-
-    // Skip if null and not explicitly showing null values
-    if (!showIfNull && !ComponentStatusUtils.hasValue(value)) {
-      return const SizedBox.shrink();
-    }
+    final hasValue = ComponentStatusUtils.hasValue(value);
 
     final fieldLabel = label ?? ReviewComponentMapper.getFieldLabel(fieldKey);
-    final formattedValue =
-        ComponentStatusUtils.formatFieldValue(fieldKey, value);
+    final formattedValue = hasValue
+        ? ComponentStatusUtils.formatFieldValue(fieldKey, value)
+        : (placeholder ?? 'Not set');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -105,7 +100,8 @@ abstract class BaseReviewComponent extends StatelessWidget {
               formattedValue,
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textPrimary,
+                color: hasValue ? AppColors.textPrimary : AppColors.textSecondary.withOpacity(0.6),
+                fontStyle: hasValue ? FontStyle.normal : FontStyle.italic,
               ),
               textAlign: TextAlign.right,
             ),

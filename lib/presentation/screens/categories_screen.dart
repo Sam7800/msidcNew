@@ -10,6 +10,7 @@ import '../providers/category_provider.dart';
 import '../../core/services/excel_service.dart';
 import '../../core/services/csv_import_service.dart';
 import '../../core/services/excel_debug_service.dart';
+import '../../core/services/sample_data_service.dart';
 import '../../core/database/database_helper.dart';
 import '../widgets/dialogs/create_category_dialog.dart';
 import 'projects_screen.dart';
@@ -42,6 +43,131 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _createTestData() async {
+    print('=== CREATE TEST DATA BUTTON CLICKED ===');
+    try {
+      // Show loading dialog
+      print('Showing loading dialog...');
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Creating test data...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Create test data
+      final dbHelper = DatabaseHelper.instance;
+      final sampleDataService = SampleDataService(dbHelper);
+      final result = await sampleDataService.generateTestProject();
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show result
+      if (mounted) {
+        if (result['success']) {
+          // Refresh projects list
+          ref.read(projectProvider.notifier).loadAllProjects();
+
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Success!'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Test project created successfully!'),
+                  const SizedBox(height: 12),
+                  Text('Fields populated: ${result['fields_populated']}',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Navigate to:'),
+                  const Text('"Test Category"',
+                      style: TextStyle(fontStyle: FontStyle.italic)),
+                  const Text('→ "Test Project - Full Data Population"',
+                      style: TextStyle(fontStyle: FontStyle.italic)),
+                  const Text('→ Click "Review" button',
+                      style: TextStyle(fontStyle: FontStyle.italic)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Failed to create test data: ${result['message']}'),
+                    if (result['error'] != null) ...[
+                      const SizedBox(height: 12),
+                      const Text('Error details:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(result['error'].toString(), style: const TextStyle(fontSize: 12)),
+                    ],
+                    if (result['stack'] != null) ...[
+                      const SizedBox(height: 12),
+                      const Text('Stack trace:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(result['stack'].toString(), style: const TextStyle(fontSize: 10, fontFamily: 'monospace')),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to create test data: ${e.toString()}'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleImport() async {
@@ -584,6 +710,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ),
         actions: [
           // Properly sized action icons (24px)
+          IconButton(
+            icon: const Icon(Icons.science, size: 24),
+            tooltip: 'Create Test Data',
+            onPressed: _createTestData,
+            color: Colors.orange,
+          ),
           IconButton(
             icon: const Icon(Icons.create_new_folder, size: 24),
             tooltip: 'Create Category',
