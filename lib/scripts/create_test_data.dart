@@ -40,11 +40,11 @@ Future<void> main() async {
     });
     print('✓ Project created with ID: $projectResult\n');
 
-    // Step 3: Create comprehensive DPR Section data
-    print('Step 3: Building DPR Section data...');
+    // Step 3: Create comprehensive DPR Section data with ALL STATUS EXAMPLES
+    print('Step 3: Building DPR Section data with status examples...');
     final dprSection = {
-      // Administrative Approval - Awaited state
-      'aa_status': 'Accorded',
+      // Administrative Approval - CRITICAL (RED) - REJECTED STATUS
+      'aa_status': 'Rejected',
       'aa_amount': 125.5,
       'aa_number': 'AA/TEST/2024/001',
       'aa_date': '2024-01-15',
@@ -53,7 +53,7 @@ Future<void> main() async {
       'aa_pending_with': 'Chief Engineer',
       'broad_scope_aa': 'Development of test infrastructure including roads, bridges, and utilities',
 
-      // DPR Details
+      // DPR Details - COMPLETED (GREEN) - APPROVED STATUS
       'dpr_status': 'Approved',
       'dpr_name': 'DPR for Test Infrastructure Development',
       'broad_scope_dpr': 'Detailed project report covering all aspects of infrastructure development',
@@ -62,8 +62,8 @@ Future<void> main() async {
       'dpr_approved_date': '2024-03-10',
       'likely_completion_date': '2024-04-30',
 
-      // BOQ
-      'boq_status': 'Completed',
+      // BOQ - IN PROGRESS (ORANGE) - PENDING STATUS
+      'boq_status': 'Pending',
       'likely_completion': '2024-03-25',
       'boq_items': jsonEncode([
         {'srNo': 1, 'item': 'Earthwork', 'quantity': 5000, 'unit': 'cum', 'rate': 450, 'amount': 2250000},
@@ -73,9 +73,12 @@ Future<void> main() async {
         {'srNo': 5, 'item': 'Drainage System', 'quantity': 8, 'unit': 'km', 'rate': 2500000, 'amount': 20000000},
       ]),
 
-      // Schedules, Drawings, Bid Documents
-      'schedules_status': 'Approved',
-      'drawings_status': 'Approved',
+      // SCHEDULES - NOT STARTED (GREY) - NULL STATUS
+      'schedules_status': null,
+
+      // DRAWINGS - CRITICAL (RED) - OVERDUE STATUS
+      'drawings_status': 'Overdue',
+
       'bid_documents_status': 'Completed',
 
       // Environmental Clearance
@@ -156,17 +159,17 @@ Future<void> main() async {
     };
     print('✓ DPR Section populated (${dprSection.length} fields)\n');
 
-    // Step 4: Create comprehensive Work Section data
-    print('Step 4: Building Work Section data...');
+    // Step 4: Create comprehensive Work Section data with STATUS EXAMPLES
+    print('Step 4: Building Work Section data with status examples...');
     final workSection = {
-      // Technical Sanction
+      // Technical Sanction - COMPLETED (GREEN) - ACCORDED STATUS
       'tech_sanction_status': 'Accorded',
       'tech_sanction_amount': 98500000,
       'ts_number': 'TS/TEST/2024/015',
       'ts_date': '2024-01-05',
       'ts_likely_submission_date': null,
 
-      // NIT
+      // NIT - IN PROGRESS (ORANGE) - ISSUED STATUS
       'nit_status': 'Issued',
       'nit_date': '2024-01-20',
       'nit_amount': 98500000,

@@ -203,7 +203,8 @@ class SampleDataService {
 
   Map<String, dynamic> _buildTestDPRSection() {
     return {
-      'aa_status': 'Accorded',
+      // AA - CRITICAL (RED) - REJECTED STATUS
+      'aa_status': 'Rejected',
       'aa_amount': 125.5,
       'aa_number': 'AA/TEST/2024/001',
       'aa_date': '2024-01-15',
@@ -211,6 +212,8 @@ class SampleDataService {
       'aa_proposal_date': '2023-12-01',
       'aa_pending_with': 'Chief Engineer',
       'broad_scope_aa': 'Development of test infrastructure including roads, bridges, and utilities',
+
+      // DPR - COMPLETED (GREEN) - APPROVED STATUS
       'dpr_status': 'Approved',
       'dpr_name': 'DPR for Test Infrastructure Development',
       'broad_scope_dpr': 'Detailed project report covering all aspects of infrastructure development',
@@ -218,7 +221,9 @@ class SampleDataService {
       'dpr_submitted_date': '2024-02-20',
       'dpr_approved_date': '2024-03-10',
       'likely_completion_date': '2024-04-30',
-      'boq_status': 'Completed',
+
+      // BOQ - IN PROGRESS (ORANGE) - PENDING STATUS
+      'boq_status': 'Pending',
       'likely_completion': '2024-03-25',
       'boq_items': jsonEncode([
         {'srNo': 1, 'item': 'Earthwork', 'quantity': 5000, 'unit': 'cum', 'rate': 450, 'amount': 2250000},
@@ -227,8 +232,13 @@ class SampleDataService {
         {'srNo': 4, 'item': 'Bituminous Road', 'quantity': 12, 'unit': 'km', 'rate': 4500000, 'amount': 54000000},
         {'srNo': 5, 'item': 'Drainage System', 'quantity': 8, 'unit': 'km', 'rate': 2500000, 'amount': 20000000},
       ]),
-      'schedules_status': 'Approved',
-      'drawings_status': 'Approved',
+
+      // SCHEDULES - NOT STARTED (GREY) - NULL STATUS
+      'schedules_status': null,
+
+      // DRAWINGS - CRITICAL (RED) - OVERDUE STATUS
+      'drawings_status': 'Overdue',
+
       'bid_documents_status': 'Completed',
       'env_clearance_status': 'Applicable',
       'env_status': 'Applicable',
@@ -288,10 +298,13 @@ class SampleDataService {
 
   Map<String, dynamic> _buildTestWorkSection() {
     return {
+      // TECHNICAL SANCTION - COMPLETED (GREEN) - ACCORDED STATUS
       'tech_sanction_status': 'Accorded',
       'tech_sanction_amount': 98500000,
       'ts_number': 'TS/TEST/2024/015',
       'ts_date': '2024-01-05',
+
+      // NIT - IN PROGRESS (ORANGE) - ISSUED STATUS
       'nit_status': 'Issued',
       'nit_date': '2024-01-20',
       'nit_amount': 98500000,

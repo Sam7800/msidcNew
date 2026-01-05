@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/constants.dart';
+import '../../utils/component_status_utils.dart';
 import '../../data/models/project.dart';
 import '../../data/models/category.dart';
 import '../providers/project_provider.dart';
+import '../providers/review_providers.dart';
 import '../widgets/dialogs/create_project_dialog.dart';
 import 'project_detail_screen.dart';
 
@@ -521,6 +523,11 @@ class _ProjectListItemState extends State<_ProjectListItem> {
 
                   const SizedBox(width: 16),
 
+                  // Critical Tasks Badge
+                  _CriticalTasksBadge(projectId: widget.project.id!),
+
+                  const SizedBox(width: 12),
+
                   // Category Icon Badge
                   Container(
                     width: 40,
@@ -556,6 +563,162 @@ class _ProjectListItemState extends State<_ProjectListItem> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Critical Tasks Badge Widget
+/// Shows count of critical tasks and displays them in a dropdown
+class _CriticalTasksBadge extends ConsumerWidget {
+  final int projectId;
+
+  const _CriticalTasksBadge({required this.projectId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final workEntryAsync = ref.watch(workEntryDataProvider(projectId));
+
+    return workEntryAsync.when(
+      data: (workEntry) {
+        if (workEntry == null) return const SizedBox.shrink();
+
+        final criticalCount = ComponentStatusUtils.countCriticalTasks(
+          workEntry.dprSection,
+          workEntry.workSection,
+          workEntry.pmsSection,
+        );
+
+        if (criticalCount == 0) return const SizedBox.shrink();
+
+        return PopupMenuButton<void>(
+          tooltip: 'View $criticalCount critical task${criticalCount > 1 ? 's' : ''}',
+          offset: const Offset(0, 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          itemBuilder: (context) {
+            final criticalTasks = <PopupMenuEntry<void>>[];
+
+            // Add header
+            criticalTasks.add(
+              PopupMenuItem<void>(
+                enabled: false,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_rounded,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Critical Tasks ($criticalCount)',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+
+            criticalTasks.add(const PopupMenuDivider());
+
+            // Add critical task items from all sections
+            void addCriticalTasksFromSection(
+                Map<String, dynamic>? section, String sectionName) {
+              if (section == null) return;
+
+              section.forEach((key, value) {
+                if (value != null &&
+                    ComponentStatusUtils.isCriticalStatus(value.toString())) {
+                  criticalTasks.add(
+                    PopupMenuItem<void>(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  key.replaceAll('_', ' ').toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  ComponentStatusUtils.formatStatus(
+                                      value.toString()),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              });
+            }
+
+            addCriticalTasksFromSection(workEntry.dprSection, 'DPR');
+            addCriticalTasksFromSection(workEntry.workSection, 'Work');
+            addCriticalTasksFromSection(workEntry.pmsSection, 'PMS');
+
+            return criticalTasks;
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.error.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_rounded,
+                  size: 16,
+                  color: AppColors.error,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  criticalCount.toString(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
