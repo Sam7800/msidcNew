@@ -211,16 +211,27 @@ class DatabaseHelper {
     await _logger.database('MIGRATION', 'Starting v2→v3 migration');
 
     try {
-      // Add work_id and name_of_work columns to work_entry table
-      await _logger.database('MIGRATION', 'Adding work_id column to work_entry table');
-      await db.execute('''
-        ALTER TABLE work_entry ADD COLUMN work_id TEXT
-      ''');
+      // Check if work_id column exists
+      final workIdExists = await _columnExists(db, 'work_entry', 'work_id');
+      if (!workIdExists) {
+        await _logger.database('MIGRATION', 'Adding work_id column to work_entry table');
+        await db.execute('''
+          ALTER TABLE work_entry ADD COLUMN work_id TEXT
+        ''');
+      } else {
+        await _logger.database('MIGRATION', 'work_id column already exists, skipping');
+      }
 
-      await _logger.database('MIGRATION', 'Adding name_of_work column to work_entry table');
-      await db.execute('''
-        ALTER TABLE work_entry ADD COLUMN name_of_work TEXT
-      ''');
+      // Check if name_of_work column exists
+      final nameOfWorkExists = await _columnExists(db, 'work_entry', 'name_of_work');
+      if (!nameOfWorkExists) {
+        await _logger.database('MIGRATION', 'Adding name_of_work column to work_entry table');
+        await db.execute('''
+          ALTER TABLE work_entry ADD COLUMN name_of_work TEXT
+        ''');
+      } else {
+        await _logger.database('MIGRATION', 'name_of_work column already exists, skipping');
+      }
 
       await _logger.database('MIGRATION', 'v2→v3 migration completed successfully');
     } catch (e, stackTrace) {
@@ -229,23 +240,39 @@ class DatabaseHelper {
     }
   }
 
+  /// Check if a column exists in a table
+  Future<bool> _columnExists(Database db, String tableName, String columnName) async {
+    final result = await db.rawQuery('PRAGMA table_info($tableName)');
+    return result.any((column) => column['name'] == columnName);
+  }
+
   /// Migrate from version 3 to version 4
   /// - Adds location and status columns to projects table
   Future<void> _migrateV3ToV4(Database db) async {
     await _logger.database('MIGRATION', 'Starting v3→v4 migration');
 
     try {
-      // Add location column to projects table
-      await _logger.database('MIGRATION', 'Adding location column to projects table');
-      await db.execute('''
-        ALTER TABLE projects ADD COLUMN location TEXT DEFAULT 'Maharashtra'
-      ''');
+      // Check if location column exists
+      final locationExists = await _columnExists(db, 'projects', 'location');
+      if (!locationExists) {
+        await _logger.database('MIGRATION', 'Adding location column to projects table');
+        await db.execute('''
+          ALTER TABLE projects ADD COLUMN location TEXT DEFAULT 'Maharashtra'
+        ''');
+      } else {
+        await _logger.database('MIGRATION', 'location column already exists, skipping');
+      }
 
-      // Add status column to projects table
-      await _logger.database('MIGRATION', 'Adding status column to projects table');
-      await db.execute('''
-        ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'In Progress'
-      ''');
+      // Check if status column exists
+      final statusExists = await _columnExists(db, 'projects', 'status');
+      if (!statusExists) {
+        await _logger.database('MIGRATION', 'Adding status column to projects table');
+        await db.execute('''
+          ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'In Progress'
+        ''');
+      } else {
+        await _logger.database('MIGRATION', 'status column already exists, skipping');
+      }
 
       await _logger.database('MIGRATION', 'v3→v4 migration completed successfully');
     } catch (e, stackTrace) {

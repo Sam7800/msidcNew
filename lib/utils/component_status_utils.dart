@@ -219,4 +219,48 @@ class ComponentStatusUtils {
     if (value is String && value.trim().isEmpty) return false;
     return true;
   }
+
+  /// Check if a status is critical (requires immediate attention)
+  ///
+  /// Returns true for error states like:
+  /// - Rejected, Failed, Not Issued, Not Submitted
+  static bool isCriticalStatus(String? status) {
+    if (status == null || status.isEmpty) return false;
+
+    final lower = status.toLowerCase().trim();
+
+    // Critical error states
+    return lower.contains('rejected') ||
+        lower.contains('failed') ||
+        lower.contains('not issued') ||
+        lower.contains('not submitted');
+  }
+
+  /// Count critical tasks across multiple sections
+  ///
+  /// Scans through provided sections and counts fields with critical status
+  /// Returns the total count of critical tasks found
+  static int countCriticalTasks(
+    Map<String, dynamic>? section1,
+    Map<String, dynamic>? section2,
+    Map<String, dynamic>? section3,
+  ) {
+    int count = 0;
+
+    void countInSection(Map<String, dynamic>? section) {
+      if (section == null) return;
+
+      section.forEach((key, value) {
+        if (value != null && isCriticalStatus(value.toString())) {
+          count++;
+        }
+      });
+    }
+
+    countInSection(section1);
+    countInSection(section2);
+    countInSection(section3);
+
+    return count;
+  }
 }
