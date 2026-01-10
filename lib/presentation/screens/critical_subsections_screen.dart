@@ -429,82 +429,54 @@ class _CriticalSubsectionsScreenState
                 children: [
                   Row(
                     children: [
-                      // Clickable project icon/name to navigate to filtered view
-                      InkWell(
-                        onTap: () {
-                          // Get the project object
-                          final projectState = ref.read(projectProvider);
-                          final project = projectState.projects.firstWhere(
-                            (p) => p.id == projectId,
-                            orElse: () => throw Exception('Project not found'),
-                          );
-
-                          // Navigate to filtered critical subsections screen
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CriticalSubsectionsScreen(
-                                categoryId: project.categoryId,
-                                projectId: projectId,
+                      // Project icon and name
+                      Icon(
+                        Icons.folder_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              projectName,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
                               ),
                             ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 4,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.folder_outlined,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            if (projectCategoryName != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
-                                  Text(
-                                    projectName,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: categoryColor?.withOpacity(0.1) ??
+                                          AppColors.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      projectCategoryName,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: categoryColor ?? AppColors.primary,
+                                      ),
                                     ),
                                   ),
-                                  if (projectCategoryName != null) ...[
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: categoryColor?.withOpacity(0.1) ??
-                                            AppColors.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        projectCategoryName,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: categoryColor ?? AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ],
                               ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
-                      const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(

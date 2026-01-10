@@ -794,7 +794,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(

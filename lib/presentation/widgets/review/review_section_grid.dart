@@ -95,7 +95,7 @@ class ReviewSectionGrid extends ConsumerWidget {
   /// Build status legend showing color coding
   Widget _buildStatusLegend() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
