@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../providers/repository_providers.dart';
 import '../providers/project_provider.dart';
+import 'subsection_detail_screen.dart';
+import '../../data/models/project.dart';
+import '../../data/models/subsection_field_mapping.dart';
 
 /// Critical Subsections Screen
 ///
@@ -10,12 +13,15 @@ import '../providers/project_provider.dart';
 /// Accessible from:
 /// 1. Categories Screen - Shows critical items for ALL projects
 /// 2. Projects Screen - Shows critical items for projects in a specific category
+/// 3. Project Header - Shows critical items for a specific project
 class CriticalSubsectionsScreen extends ConsumerStatefulWidget {
   final int? categoryId; // null = all projects, set = specific category
+  final int? projectId; // null = all projects in category, set = specific project
 
   const CriticalSubsectionsScreen({
     super.key,
     this.categoryId,
+    this.projectId,
   });
 
   @override
@@ -28,6 +34,9 @@ class _CriticalSubsectionsScreenState
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'All'; // All, DPR, Work, PMS
+  final Set<int> _expandedProjects = {}; // Track expanded project IDs
+  List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical items
+  List<int>? _cachedProjectIds; // Cache project IDs to detect changes
 
   @override
   void initState() {
@@ -67,7 +76,7 @@ class _CriticalSubsectionsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Critical Subsections',
+              'Critical Items',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 18,
@@ -75,9 +84,11 @@ class _CriticalSubsectionsScreenState
               ),
             ),
             Text(
-              widget.categoryId == null
-                  ? 'All Projects'
-                  : 'Category Projects',
+              widget.projectId != null
+                  ? 'Single Project'
+                  : widget.categoryId == null
+                      ? 'All Projects'
+                      : 'Category Projects',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
@@ -186,89 +197,134 @@ class _CriticalSubsectionsScreenState
       );
     }
 
-    // Filter projects by category if specified
-    final filteredProjects = widget.categoryId != null
-        ? projectState.projects
-            .where((p) => p.categoryId == widget.categoryId)
-            .toList()
-        : projectState.projects;
+    // Filter projects by category and/or project ID
+    List<Project> filteredProjects;
+    if (widget.projectId != null) {
+      // Show only the specific project
+      filteredProjects = projectState.projects
+          .where((p) => p.id == widget.projectId)
+          .toList();
+    } else if (widget.categoryId != null) {
+      // Show projects in specific category
+      filteredProjects = projectState.projects
+          .where((p) => p.categoryId == widget.categoryId)
+          .toList();
+    } else {
+      // Show all projects
+      filteredProjects = projectState.projects;
+    }
 
     if (filteredProjects.isEmpty) {
       return _buildEmptyState('No projects found');
     }
 
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _loadCriticalSubsections(
-          filteredProjects.map((p) => p.id!).toList()),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final currentProjectIds = filteredProjects.map((p) => p.id!).toList();
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildEmptyState('No critical subsections marked yet');
-        }
+    // Check if we need to reload data
+    final needsReload = _cachedCriticalItems == null ||
+        _cachedProjectIds == null ||
+        !_listEquals(_cachedProjectIds!, currentProjectIds);
 
-        final criticalItems = snapshot.data!;
-
-        // Apply filters
-        final filtered = criticalItems.where((item) {
-          // Category filter
-          if (_selectedCategory != 'All' &&
-              item['category'] != _selectedCategory) {
-            return false;
+    if (needsReload) {
+      // Load new data
+      return FutureBuilder<List<Map<String, dynamic>>>(
+        future: _loadCriticalSubsections(currentProjectIds),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          // Search filter
-          if (_searchQuery.isNotEmpty) {
-            final projectName =
-                item['project_name']?.toString().toLowerCase() ?? '';
-            final subsectionName =
-                item['subsection_name']?.toString().toLowerCase() ?? '';
-            final category = item['category']?.toString().toLowerCase() ?? '';
-
-            return projectName.contains(_searchQuery) ||
-                subsectionName.contains(_searchQuery) ||
-                category.contains(_searchQuery);
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState('No critical subsections marked yet');
           }
 
-          return true;
-        }).toList();
+          // Cache the data
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _cachedCriticalItems = snapshot.data;
+                _cachedProjectIds = currentProjectIds;
+              });
+            }
+          });
 
-        if (filtered.isEmpty) {
-          return _buildEmptyState('No matching critical items found');
-        }
+          return _buildCriticalItemsContent(snapshot.data!);
+        },
+      );
+    } else {
+      // Use cached data
+      return _buildCriticalItemsContent(_cachedCriticalItems!);
+    }
+  }
 
-        // Group by project
-        final groupedByProject = <int, List<Map<String, dynamic>>>{};
-        for (var item in filtered) {
-          final projectId = item['project_id'] as int;
-          groupedByProject.putIfAbsent(projectId, () => []);
-          groupedByProject[projectId]!.add(item);
-        }
+  Widget _buildCriticalItemsContent(List<Map<String, dynamic>> criticalItems) {
+    // Apply filters
+    final filtered = criticalItems.where((item) {
+      // Category filter
+      if (_selectedCategory != 'All' &&
+          item['category'] != _selectedCategory) {
+        return false;
+      }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: groupedByProject.length,
-          itemBuilder: (context, index) {
-            final projectId = groupedByProject.keys.elementAt(index);
-            final projectItems = groupedByProject[projectId]!;
-            final projectName = projectItems.first['project_name'];
+      // Search filter
+      if (_searchQuery.isNotEmpty) {
+        final projectName =
+            item['project_name']?.toString().toLowerCase() ?? '';
+        final subsectionName =
+            item['subsection_name']?.toString().toLowerCase() ?? '';
+        final category = item['category']?.toString().toLowerCase() ?? '';
 
-            return _buildProjectGroup(projectName, projectItems);
-          },
-        );
+        return projectName.contains(_searchQuery) ||
+            subsectionName.contains(_searchQuery) ||
+            category.contains(_searchQuery);
+      }
+
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyState('No matching critical items found');
+    }
+
+    // Group by project
+    final groupedByProject = <int, List<Map<String, dynamic>>>{};
+    for (var item in filtered) {
+      final projectId = item['project_id'] as int;
+      groupedByProject.putIfAbsent(projectId, () => []);
+      groupedByProject[projectId]!.add(item);
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: groupedByProject.length,
+      itemBuilder: (context, index) {
+        final projectId = groupedByProject.keys.elementAt(index);
+        final projectItems = groupedByProject[projectId]!;
+        final projectName = projectItems.first['project_name'];
+
+        return _buildProjectGroup(projectId, projectName, projectItems);
       },
     );
+  }
+
+  bool _listEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedCategory == label;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedCategory = label;
-        });
+        if (_selectedCategory != label) {
+          setState(() {
+            _selectedCategory = label;
+            // No need to clear cache - filtering is done on cached data
+          });
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -292,10 +348,11 @@ class _CriticalSubsectionsScreenState
   }
 
   Widget _buildProjectGroup(
-      String projectName, List<Map<String, dynamic>> items) {
+      int projectId, String projectName, List<Map<String, dynamic>> items) {
     // Get project category from first item (all items in group have same project)
     final projectCategoryName = items.first['project_category_name'] as String?;
     final projectCategoryColor = items.first['project_category_color'] as String?;
+    final isExpanded = _expandedProjects.contains(projectId);
 
     // Parse category color if available
     Color? categoryColor;
@@ -324,108 +381,162 @@ class _CriticalSubsectionsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Project Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
+          // Project Header - Tappable to expand/collapse
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expandedProjects.remove(projectId);
+                } else {
+                  _expandedProjects.add(projectId);
+                }
+              });
+            },
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.folder_outlined,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            projectName,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: isExpanded ? Radius.zero : const Radius.circular(12),
+                  bottomRight: isExpanded ? Radius.zero : const Radius.circular(12),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Clickable project icon/name to navigate to filtered view
+                      InkWell(
+                        onTap: () {
+                          // Get the project object
+                          final projectState = ref.read(projectProvider);
+                          final project = projectState.projects.firstWhere(
+                            (p) => p.id == projectId,
+                            orElse: () => throw Exception('Project not found'),
+                          );
+
+                          // Navigate to filtered critical subsections screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CriticalSubsectionsScreen(
+                                categoryId: project.categoryId,
+                                projectId: projectId,
+                              ),
                             ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
                           ),
-                          if (projectCategoryName != null) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: categoryColor?.withOpacity(0.1) ??
-                                        AppColors.primary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    projectCategoryName,
-                                    style: TextStyle(
-                                      fontSize: 11,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.folder_outlined,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    projectName,
+                                    style: const TextStyle(
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
-                                      color: categoryColor ?? AppColors.primary,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${items.length} Critical',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFEF4444),
+                                  if (projectCategoryName != null) ...[
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: categoryColor?.withOpacity(0.1) ??
+                                            AppColors.primary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        projectCategoryName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: categoryColor ?? AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${items.length} Critical',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        isExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: AppColors.textSecondary,
+                        size: 24,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          // Critical Items
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return _buildCriticalTile(items[index]);
-            },
-          ),
+          // Critical Items - Only show when expanded
+          if (isExpanded)
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: items.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildCriticalTile(projectId, items[index]);
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildCriticalTile(Map<String, dynamic> item) {
+  Widget _buildCriticalTile(int projectId, Map<String, dynamic> item) {
     final category = item['category'] as String;
     final subsectionName = item['subsection_name'] as String;
     final createdAt = item['created_at'] as String;
+    final personResponsible = item['person_responsible'] as String?;
 
     // Parse date
     DateTime? createdDate;
@@ -451,86 +562,138 @@ class _CriticalSubsectionsScreenState
         categoryColor = AppColors.textSecondary;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: const Color(0xFFEF4444).withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Critical Icon
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.error,
-              color: Color(0xFFEF4444),
-              size: 20,
+    return InkWell(
+      onTap: () async {
+        // Get the project object
+        final projectState = ref.read(projectProvider);
+        final project = projectState.projects.firstWhere(
+          (p) => p.id == projectId,
+          orElse: () => throw Exception('Project not found'),
+        );
+
+        // Navigate to Subsection Detail screen
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubsectionDetailScreen(
+              project: project,
+              category: category,
+              subsectionName: subsectionName,
             ),
           ),
-          const SizedBox(width: 12),
-          // Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  subsectionName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+        );
+
+        // Refresh if critical status changed (unflagged)
+        if (result == false) {
+          // result is false when subsection was unflagged
+          setState(() {
+            // Clear cache to force reload
+            _cachedCriticalItems = null;
+            _cachedProjectIds = null;
+          });
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFEF4444).withOpacity(0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Critical Icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.error,
+                color: Color(0xFFEF4444),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    subsectionName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: categoryColor,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: categoryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          category,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: categoryColor,
+                          ),
                         ),
                       ),
-                    ),
-                    if (createdDate != null) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(createdDate),
-                        style: const TextStyle(
-                          fontSize: 11,
+                      if (personResponsible != null && personResponsible.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.person_outline,
+                          size: 12,
                           color: AppColors.textTertiary,
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            personResponsible,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                      if (createdDate != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDate(createdDate),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          // Arrow Icon
-          Icon(
-            Icons.chevron_right,
-            color: AppColors.textTertiary,
-            size: 20,
-          ),
-        ],
+            // Arrow Icon
+            Icon(
+              Icons.chevron_right,
+              color: AppColors.textTertiary,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -573,6 +736,7 @@ class _CriticalSubsectionsScreenState
 
     final criticalRepo = ref.read(criticalSubsectionsRepositoryProvider);
     final projectState = ref.read(projectProvider);
+    final workEntryRepo = ref.read(workEntryRepositoryProvider);
 
     final List<Map<String, dynamic>> allCriticalItems = [];
 
@@ -587,13 +751,45 @@ class _CriticalSubsectionsScreenState
         orElse: () => throw Exception('Project not found'),
       );
 
-      // Add project name and category to each item
+      // Load work entry data to get person responsible
+      final workEntry = await workEntryRepo.getWorkEntryOrDraftByProjectId(projectId);
+
+      // Add project name, category, and person responsible to each item
       for (var item in items) {
+        String? personResponsible;
+
+        if (workEntry != null) {
+          final category = item['category'] as String;
+          final subsectionName = item['subsection_name'] as String;
+
+          // Get the field list for this subsection
+          final fields = SubsectionFieldMapping.getFieldsForSubsection(
+            subsectionName,
+            category,
+          );
+
+          // Find the person_responsible field (usually ends with _person_responsible)
+          final personFieldKey = fields.firstWhere(
+            (field) => field.endsWith('_person_responsible'),
+            orElse: () => '',
+          );
+
+          if (personFieldKey.isNotEmpty) {
+            final sectionData = category == 'DPR'
+                ? workEntry.dprSection
+                : category == 'Work'
+                    ? workEntry.workSection
+                    : workEntry.pmsSection;
+            personResponsible = sectionData[personFieldKey]?.toString();
+          }
+        }
+
         allCriticalItems.add({
           ...item,
           'project_name': project.name,
           'project_category_name': project.categoryName ?? 'Unknown',
           'project_category_color': project.categoryColor,
+          'person_responsible': personResponsible,
         });
       }
     }

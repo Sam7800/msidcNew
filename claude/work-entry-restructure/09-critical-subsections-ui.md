@@ -51,6 +51,54 @@ This ensures the provider state is always synchronized with the intended view.
 
 This helps users identify which category each project belongs to, especially useful when viewing all critical items across all categories from the dashboard.
 
+### Enhancement 2: Expandable/Collapsible Project Cards
+
+**Feature**: Project cards can now be expanded/collapsed to show/hide critical subsections, reducing clutter when viewing many projects.
+
+**Implementation**:
+1. Added `_expandedProjects` Set to track which projects are expanded
+2. Added expand/collapse icon (▼/▲) in project header
+3. Made project header tappable to toggle expansion
+4. Critical items list only renders when project is expanded
+
+**UI Behavior**:
+- Click project header to toggle expand/collapse
+- Expand icon changes: ▼ (collapsed) → ▲ (expanded)
+- Header border radius adjusts based on state (rounded corners only when collapsed)
+- Smooth transition when toggling
+
+**Benefits**:
+- Reduces visual clutter when many projects have critical items
+- Users can focus on specific projects
+- Improves performance by not rendering collapsed content
+
+### Enhancement 3: Navigate to Project Detail
+
+**Feature**: Clicking on a critical subsection tile now navigates to the Project Detail screen with the Work Entry tab, allowing users to view and edit all subsection details.
+
+**Implementation**:
+1. Made critical subsection tiles tappable (InkWell wrapper)
+2. Added navigation to ProjectDetailScreen on tap
+3. Retrieves Project object from projectProvider using projectId
+4. Opens Work Entry tab where user can see all details and edit
+
+**Navigation Flow**:
+```
+Critical Subsections Screen
+  ↓ (Click on subsection tile)
+Project Detail Screen (Work Entry Tab)
+  ↓ (Can view/edit all details)
+  ↓ (Can toggle critical marker)
+Save changes to database
+```
+
+**Benefits**:
+- Quick access to full subsection details from critical items view
+- Edit functionality available immediately
+- Critical marker toggle available
+- Full form fields visible with responsibility tracking
+- Seamless integration with existing Project Detail screen
+
 ---
 
 ## Features Implemented
