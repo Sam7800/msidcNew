@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../providers/repository_providers.dart';
 import '../providers/project_provider.dart';
@@ -38,6 +40,8 @@ class _CriticalSubsectionsScreenState
   List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical items
   List<int>? _cachedProjectIds; // Cache project IDs to detect changes
   final Map<String, bool> _toggledOffItems = {}; // Track items toggled off (key = "projectId_category_subsectionName")
+  final Set<String> _selectedItemsForShare = {}; // Track items selected for sharing (key = "projectId_category_subsectionName")
+  bool _isSelectionMode = false; // Whether we're in selection mode
 
   @override
   void initState() {
@@ -98,22 +102,69 @@ class _CriticalSubsectionsScreenState
             ),
           ],
         ),
-        actions: _toggledOffItems.isNotEmpty
+        actions: _isSelectionMode
             ? [
+                // Selection mode: Show cancel and share buttons
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isSelectionMode = false;
+                      _selectedItemsForShare.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Cancel'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: _showRemoveCriticalConfirmation,
-                  icon: const Icon(Icons.check, size: 18),
-                  label: Text('Submit (${_toggledOffItems.length})'),
+                  onPressed: _selectedItemsForShare.isEmpty
+                      ? null
+                      : _showEmailComposer,
+                  icon: const Icon(Icons.send, size: 18),
+                  label: Text('Send (${_selectedItemsForShare.length})'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.border,
+                    disabledForegroundColor: AppColors.textTertiary,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     elevation: 2,
                   ),
                 ),
                 const SizedBox(width: 16),
               ]
-            : null,
+            : [
+                // Normal mode: Show remove critical and share buttons
+                if (_toggledOffItems.isNotEmpty) ...[
+                  ElevatedButton.icon(
+                    onPressed: _showRemoveCriticalConfirmation,
+                    icon: const Icon(Icons.check, size: 18),
+                    label: Text('Submit (${_toggledOffItems.length})'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      elevation: 2,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isSelectionMode = true;
+                    });
+                  },
+                  icon: const Icon(Icons.share),
+                  tooltip: 'Share critical items',
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+              ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
@@ -526,10 +577,12 @@ class _CriticalSubsectionsScreenState
     final subsectionName = item['subsection_name'] as String;
     final createdAt = item['created_at'] as String;
     final personResponsible = item['person_responsible'] as String?;
+    final projectName = item['project_name'] as String;
 
     // Create unique key for this item
     final itemKey = '${projectId}_${category}_$subsectionName';
     final isToggledOff = _toggledOffItems[itemKey] ?? false;
+    final isSelected = _selectedItemsForShare.contains(itemKey);
 
     // Parse date
     DateTime? createdDate;
@@ -557,34 +610,50 @@ class _CriticalSubsectionsScreenState
 
     return InkWell(
       onTap: () async {
-        // Get the project object
-        final projectState = ref.read(projectProvider);
-        final project = projectState.projects.firstWhere(
-          (p) => p.id == projectId,
-          orElse: () => throw Exception('Project not found'),
-        );
-
-        // Navigate to Subsection Detail screen
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SubsectionDetailScreen(
-              project: project,
-              category: category,
-              subsectionName: subsectionName,
-            ),
-          ),
-        );
-
-        // Refresh if critical status changed (unflagged)
-        if (result == false) {
-          // result is false when subsection was unflagged
+        if (_isSelectionMode) {
+          // In selection mode, toggle selection
           setState(() {
-            // Clear cache to force reload
-            _cachedCriticalItems = null;
-            _cachedProjectIds = null;
-            _toggledOffItems.clear();
+            if (isSelected) {
+              _selectedItemsForShare.remove(itemKey);
+            } else {
+              _selectedItemsForShare.add(itemKey);
+              // Store the full item data for email generation
+              if (!_selectedItemsForShare.contains(itemKey)) {
+                _selectedItemsForShare.add(itemKey);
+              }
+            }
           });
+        } else {
+          // Normal mode: Navigate to detail screen
+          // Get the project object
+          final projectState = ref.read(projectProvider);
+          final project = projectState.projects.firstWhere(
+            (p) => p.id == projectId,
+            orElse: () => throw Exception('Project not found'),
+          );
+
+          // Navigate to Subsection Detail screen
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SubsectionDetailScreen(
+                project: project,
+                category: category,
+                subsectionName: subsectionName,
+              ),
+            ),
+          );
+
+          // Refresh if critical status changed (unflagged)
+          if (result == false) {
+            // result is false when subsection was unflagged
+            setState(() {
+              // Clear cache to force reload
+              _cachedCriticalItems = null;
+              _cachedProjectIds = null;
+              _toggledOffItems.clear();
+            });
+          }
         }
       },
       borderRadius: BorderRadius.circular(8),
@@ -593,39 +662,58 @@ class _CriticalSubsectionsScreenState
         decoration: BoxDecoration(
           color: isToggledOff
               ? AppColors.background.withOpacity(0.5)
-              : AppColors.background,
+              : isSelected
+                  ? AppColors.primary.withOpacity(0.05)
+                  : AppColors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isToggledOff
-                ? AppColors.border
-                : const Color(0xFFEF4444).withOpacity(0.3),
-            width: 1.5,
+            color: isSelected
+                ? AppColors.primary
+                : isToggledOff
+                    ? AppColors.border
+                    : const Color(0xFFEF4444).withOpacity(0.3),
+            width: isSelected ? 2 : 1.5,
           ),
         ),
         child: Row(
           children: [
-            // Critical Toggle Switch
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(
-                value: !isToggledOff, // true = critical (on), false = not critical (off)
+            // Checkbox in selection mode, switch in normal mode
+            if (_isSelectionMode)
+              Checkbox(
+                value: isSelected,
                 onChanged: (value) {
                   setState(() {
-                    if (value) {
-                      // Turned on - remove from toggled off list
-                      _toggledOffItems.remove(itemKey);
+                    if (value == true) {
+                      _selectedItemsForShare.add(itemKey);
                     } else {
-                      // Turned off - add to toggled off list
-                      _toggledOffItems[itemKey] = true;
+                      _selectedItemsForShare.remove(itemKey);
                     }
                   });
                 },
-                activeColor: const Color(0xFFEF4444),
-                activeTrackColor: const Color(0xFFEF4444).withOpacity(0.3),
-                inactiveThumbColor: AppColors.textTertiary,
-                inactiveTrackColor: AppColors.border,
+                activeColor: AppColors.primary,
+              )
+            else
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: !isToggledOff, // true = critical (on), false = not critical (off)
+                  onChanged: (value) {
+                    setState(() {
+                      if (value) {
+                        // Turned on - remove from toggled off list
+                        _toggledOffItems.remove(itemKey);
+                      } else {
+                        // Turned off - add to toggled off list
+                        _toggledOffItems[itemKey] = true;
+                      }
+                    });
+                  },
+                  activeColor: const Color(0xFFEF4444),
+                  activeTrackColor: const Color(0xFFEF4444).withOpacity(0.3),
+                  inactiveThumbColor: AppColors.textTertiary,
+                  inactiveTrackColor: AppColors.border,
+                ),
               ),
-            ),
             const SizedBox(width: 8),
             // Content
             Expanded(
@@ -999,5 +1087,490 @@ class _CriticalSubsectionsScreenState
         );
       }
     }
+  }
+
+  void _showEmailComposer() {
+    final toController = TextEditingController();
+    final subjectController = TextEditingController(
+      text: 'Critical Subsections Alert - ${_selectedItemsForShare.length} items',
+    );
+    final bodyController = TextEditingController();
+
+    // Generate email body with selected items
+    String generateEmailBody() {
+      final buffer = StringBuffer();
+      buffer.writeln('Critical Subsections Report\n');
+      buffer.writeln('=' * 50);
+      buffer.writeln('\n');
+
+      // Group selected items by project
+      final itemsByProject = <String, List<Map<String, dynamic>>>{};
+
+      for (var selectedKey in _selectedItemsForShare) {
+        // Find the item in cached data
+        final item = _cachedCriticalItems?.firstWhere(
+          (item) {
+            final projectId = item['project_id'] as int;
+            final category = item['category'] as String;
+            final subsectionName = item['subsection_name'] as String;
+            final itemKey = '${projectId}_${category}_$subsectionName';
+            return itemKey == selectedKey;
+          },
+          orElse: () => {},
+        );
+
+        if (item != null && item.isNotEmpty) {
+          final projectName = item['project_name'] as String? ?? 'Unknown Project';
+          itemsByProject.putIfAbsent(projectName, () => []);
+          itemsByProject[projectName]!.add(item);
+        }
+      }
+
+      // Format items by project
+      itemsByProject.forEach((projectName, items) {
+        buffer.writeln('Project: $projectName');
+        buffer.writeln('-' * 50);
+        for (var item in items) {
+          final subsectionName = item['subsection_name'] as String;
+          final category = item['category'] as String;
+          final personResponsible = item['person_responsible'] as String? ?? 'Not assigned';
+
+          buffer.writeln('  • $subsectionName');
+          buffer.writeln('    Category: $category');
+          buffer.writeln('    Person Responsible: $personResponsible');
+          buffer.writeln('');
+        }
+        buffer.writeln('');
+      });
+
+      buffer.writeln('Total Critical Items: ${_selectedItemsForShare.length}');
+      buffer.writeln('\n');
+      buffer.writeln('Generated by MSIDC Project Management System');
+
+      return buffer.toString();
+    }
+
+    bodyController.text = generateEmailBody();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.email,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Compose Email',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // To field
+                  const Text(
+                    'To',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: toController,
+                    decoration: InputDecoration(
+                      hintText: 'recipient@example.com',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.all(12),
+                      prefixIcon: Icon(Icons.person, color: AppColors.textSecondary),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Subject field
+                  const Text(
+                    'Subject',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: subjectController,
+                    decoration: InputDecoration(
+                      hintText: 'Email subject',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.all(12),
+                      prefixIcon: Icon(Icons.subject, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Body field
+                  const Text(
+                    'Message',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: bodyController,
+                    maxLines: 12,
+                    decoration: InputDecoration(
+                      hintText: 'Email body',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                side: BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _sendEmail(
+                  toController.text,
+                  subjectController.text,
+                  bodyController.text,
+                );
+              },
+              icon: const Icon(Icons.send, size: 18),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              label: const Text(
+                'Send Email',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _sendEmail(String to, String subject, String body) async {
+    if (to.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a recipient email address'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: to,
+      query: _encodeQueryParameters({
+        'subject': subject,
+        'body': body,
+      }),
+    );
+
+    try {
+      // Try to launch with external application mode for desktop
+      final launched = await launchUrl(
+        emailUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (launched) {
+        // Clear selection after sending
+        setState(() {
+          _isSelectionMode = false;
+          _selectedItemsForShare.clear();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Email client opened successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // If launching failed, show copy to clipboard option
+        if (mounted) {
+          _showEmailCopyDialog(to, subject, body);
+        }
+      }
+    } catch (e) {
+      // On error, show copy to clipboard option
+      if (mounted) {
+        _showEmailCopyDialog(to, subject, body);
+      }
+    }
+  }
+
+  String _encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((e) =>
+            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+  }
+
+  void _showEmailCopyDialog(String to, String subject, String body) {
+    final emailContent = '''To: $to
+
+Subject: $subject
+
+$body''';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  color: AppColors.warning,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Email Client Not Available',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Unable to open your default email client. You can copy the email content below and paste it into your email application manually.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(12),
+                    child: SelectableText(
+                      emailContent,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        color: AppColors.textPrimary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                side: BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Close',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: emailContent));
+
+                // Clear selection after copying
+                setState(() {
+                  _isSelectionMode = false;
+                  _selectedItemsForShare.clear();
+                });
+
+                Navigator.of(context).pop();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email content copied to clipboard'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.copy, size: 18),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              label: const Text(
+                'Copy to Clipboard',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

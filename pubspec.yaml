@@ -59,6 +59,9 @@ dependencies:
   # File Operations
   file_picker: ^8.1.2
 
+  # Email & URL Launcher
+  url_launcher: ^6.3.0
+
   # PDF Export
   pdf: ^3.11.1
   printing: ^5.13.3
