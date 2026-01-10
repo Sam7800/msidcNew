@@ -9,6 +9,7 @@ import '../providers/project_provider.dart';
 import '../providers/review_providers.dart';
 import '../widgets/dialogs/create_project_dialog.dart';
 import 'project_detail_screen.dart';
+import 'critical_subsections_screen.dart';
 
 /// Projects Screen - Shows projects within a selected category
 ///
@@ -140,6 +141,21 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             tooltip: 'Create Project',
             onPressed: _handleCreateProject,
             color: AppColors.textPrimary,
+          ),
+          IconButton(
+            icon: const Icon(Icons.error, size: 24),
+            tooltip: 'View Critical Items',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CriticalSubsectionsScreen(
+                    categoryId: widget.category.id,
+                  ),
+                ),
+              );
+            },
+            color: const Color(0xFFEF4444), // Red for critical
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 24),

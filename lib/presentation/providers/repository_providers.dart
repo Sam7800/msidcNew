@@ -6,6 +6,7 @@ import '../../core/database/repositories/dpr_repository.dart';
 import '../../core/database/repositories/work_repository.dart';
 import '../../core/database/repositories/monitoring_repository.dart';
 import '../../core/database/repositories/work_entry_repository.dart';
+import '../../core/database/repositories/critical_subsections_repository.dart';
 
 /// Database Helper Provider (Singleton)
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
@@ -46,4 +47,10 @@ final monitoringRepositoryProvider = Provider<MonitoringRepository>((ref) {
 final workEntryRepositoryProvider = Provider<WorkEntryRepository>((ref) {
   final dbHelper = ref.watch(databaseHelperProvider);
   return WorkEntryRepository(dbHelper);
+});
+
+/// Critical Subsections Repository Provider
+final criticalSubsectionsRepositoryProvider = Provider<CriticalSubsectionsRepository>((ref) {
+  final dbHelper = ref.watch(databaseHelperProvider);
+  return CriticalSubsectionsRepository(dbHelper);
 });

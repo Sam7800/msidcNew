@@ -48,7 +48,7 @@ class DatabaseHelper {
 
       final db = await openDatabase(
         path,
-        version: 4,
+        version: 5,
         onCreate: _createDB,
         onConfigure: _onConfigure,
         onUpgrade: _upgradeDB,
@@ -83,6 +83,10 @@ class DatabaseHelper {
 
     if (oldVersion < 4) {
       await _migrateV3ToV4(db);
+    }
+
+    if (oldVersion < 5) {
+      await _migrateV4ToV5(db);
     }
 
     await _logger.database('UPGRADE', 'Database upgrade completed successfully');
@@ -246,6 +250,15 @@ class DatabaseHelper {
     return result.any((column) => column['name'] == columnName);
   }
 
+  /// Check if a table exists in the database
+  Future<bool> _tableExists(Database db, String tableName) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+      [tableName],
+    );
+    return result.isNotEmpty;
+  }
+
   /// Migrate from version 3 to version 4
   /// - Adds location and status columns to projects table
   Future<void> _migrateV3ToV4(Database db) async {
@@ -275,6 +288,46 @@ class DatabaseHelper {
       }
 
       await _logger.database('MIGRATION', 'v3→v4 migration completed successfully');
+    } catch (e, stackTrace) {
+      await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Migrate from version 4 to version 5
+  /// - Creates critical_subsections table for tracking critical subsections
+  Future<void> _migrateV4ToV5(Database db) async {
+    await _logger.database('MIGRATION', 'Starting v4→v5 migration');
+
+    try {
+      // Check if critical_subsections table already exists
+      final tableExists = await _tableExists(db, 'critical_subsections');
+      if (!tableExists) {
+        await _logger.database('MIGRATION', 'Creating critical_subsections table');
+        await db.execute('''
+          CREATE TABLE critical_subsections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            category TEXT NOT NULL CHECK(category IN ('DPR', 'Work', 'PMS')),
+            subsection_name TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            UNIQUE(project_id, category, subsection_name)
+          )
+        ''');
+
+        // Create indexes for faster queries
+        await db.execute(
+            'CREATE INDEX idx_critical_project ON critical_subsections(project_id)');
+        await db.execute(
+            'CREATE INDEX idx_critical_category ON critical_subsections(category)');
+
+        await _logger.database('MIGRATION', 'critical_subsections table created successfully');
+      } else {
+        await _logger.database('MIGRATION', 'critical_subsections table already exists, skipping');
+      }
+
+      await _logger.database('MIGRATION', 'v4→v5 migration completed successfully');
     } catch (e, stackTrace) {
       await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
       rethrow;
@@ -473,7 +526,26 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_work_entry_draft ON work_entry(is_draft)');
 
-    // Table 7: Import Logs
+    // Table 7: Critical Subsections (new in v5)
+    await _logger.database('CREATE', 'Creating critical_subsections table');
+    await db.execute('''
+      CREATE TABLE critical_subsections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        category TEXT NOT NULL CHECK(category IN ('DPR', 'Work', 'PMS')),
+        subsection_name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        UNIQUE(project_id, category, subsection_name)
+      )
+    ''');
+
+    await db.execute(
+        'CREATE INDEX idx_critical_project ON critical_subsections(project_id)');
+    await db.execute(
+        'CREATE INDEX idx_critical_category ON critical_subsections(category)');
+
+    // Table 8: Import Logs
     await _logger.database('CREATE', 'Creating import_logs table');
     await db.execute('''
       CREATE TABLE import_logs (
@@ -494,7 +566,7 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_import_logs_date ON import_logs(imported_at)');
 
-    // Table 8: Audit Log
+    // Table 9: Audit Log
     await _logger.database('CREATE', 'Creating audit_log table');
     await db.execute('''
       CREATE TABLE audit_log (

@@ -15,6 +15,7 @@ import '../../core/database/database_helper.dart';
 import '../widgets/dialogs/create_category_dialog.dart';
 import 'projects_screen.dart';
 import 'login_screen.dart';
+import 'critical_subsections_screen.dart';
 
 /// Categories Screen - Main screen showing 5 project categories
 ///
@@ -735,6 +736,19 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           //   onPressed: _handleExport,
           //   color: AppColors.textPrimary,
           // ),
+          IconButton(
+            icon: const Icon(Icons.error, size: 24),
+            tooltip: 'View Critical Items',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CriticalSubsectionsScreen(),
+                ),
+              );
+            },
+            color: const Color(0xFFEF4444), // Red for critical
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 24),
             tooltip: Constants.tooltipRefresh,

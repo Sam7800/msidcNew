@@ -33,6 +33,9 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   // Critical subsections tracking
   Map<String, bool> _criticalSubsections = {};
 
+  // Map subsection names to their categories for database storage
+  final Map<String, String> _subsectionCategories = {};
+
   // Section expansion states
   bool _dprSectionExpanded = true;
   bool _workSectionExpanded = false;
@@ -85,19 +88,49 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   List<Widget> _buildSearchableSubsection(
     String title,
     List<Widget> fields,
+    String category, // Category: 'DPR', 'Work', or 'PMS'
   ) {
     if (!_matchesSearch(title)) {
       return []; // Hide subsection if it doesn't match search
     }
 
+    // Store the category for this subsection
+    _subsectionCategories[title] = category;
+
     return [
       _buildSectionHeader(
         title,
         isCritical: _criticalSubsections[title] ?? false,
-        onCriticalToggle: () {
-          setState(() {
-            _criticalSubsections[title] = !(_criticalSubsections[title] ?? false);
-          });
+        onCriticalToggle: () async {
+          final criticalRepository = ref.read(criticalSubsectionsRepositoryProvider);
+          final isCriticalNow = _criticalSubsections[title] ?? false;
+
+          try {
+            if (isCriticalNow) {
+              // Remove from database
+              await criticalRepository.removeCritical(
+                widget.projectId,
+                category,
+                title,
+              );
+              setState(() {
+                _criticalSubsections[title] = false;
+              });
+            } else {
+              // Add to database
+              await criticalRepository.markAsCritical(
+                widget.projectId,
+                category,
+                title,
+              );
+              setState(() {
+                _criticalSubsections[title] = true;
+              });
+            }
+          } catch (e) {
+            print('[WorkEntryTab] Error toggling critical status: $e');
+            // Optionally show error to user
+          }
         },
       ),
       ...fields,
@@ -111,8 +144,13 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     setState(() => _isLoading = true);
 
     final repository = ref.read(workEntryRepositoryProvider);
+    final criticalRepository = ref.read(criticalSubsectionsRepositoryProvider);
+
     // Load draft first, then fall back to final data
     final data = await repository.getWorkEntryOrDraftByProjectId(widget.projectId);
+
+    // Load critical subsections from database
+    final criticalSubsections = await criticalRepository.getCriticalSubsectionsByProjectId(widget.projectId);
 
     setState(() {
       _workEntryData = data;
@@ -137,6 +175,16 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
       } else {
         print('[WorkEntryTab] No data found for project ${widget.projectId}');
       }
+
+      // Load critical subsections into memory
+      _criticalSubsections.clear();
+      for (var subsection in criticalSubsections) {
+        final subsectionName = subsection['subsection_name'] as String;
+        final category = subsection['category'] as String;
+        _criticalSubsections[subsectionName] = true;
+        _subsectionCategories[subsectionName] = category;
+      }
+      print('[WorkEntryTab] Loaded ${criticalSubsections.length} critical subsections');
     });
   }
 
@@ -1042,6 +1090,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
             maxLines: 3,
           ),
         ],
+        'DPR',
       ),
 
       // DPR Bid Doc for Consultant
@@ -1055,6 +1104,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('dpr_bid_doc'),
         ],
+        'DPR',
       ),
 
       // Inviting DPR Bid
@@ -1074,6 +1124,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('invite_dpr'),
         ],
+        'DPR',
       ),
 
       // Pre-Bid Meeting
@@ -1096,6 +1147,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('prebid'),
         ],
+        'DPR',
       ),
 
       // CSD
@@ -1115,6 +1167,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('csd'),
         ],
+        'DPR',
       ),
 
       // Bid Submission
@@ -1129,6 +1182,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('bid_submission'),
         ],
+        'DPR',
       ),
 
       // Bid Opening
@@ -1151,6 +1205,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('bid_opening'),
         ],
+        'DPR',
       ),
 
       // Technical Evaluation
@@ -1171,6 +1226,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('tech_eval'),
         ],
+        'DPR',
       ),
 
       // Financial Opening
@@ -1208,6 +1264,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('fin_opening'),
         ],
+        'DPR',
       ),
 
       // Acceptance of Bid
@@ -1228,6 +1285,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('bid_acceptance'),
         ],
+        'DPR',
       ),
 
       // LOA
@@ -1247,6 +1305,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('loa'),
         ],
+        'DPR',
       ),
 
       // PBG Submission
@@ -1282,6 +1341,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pbg'),
         ],
+        'DPR',
       ),
 
       // Insurance Submission (PII)
@@ -1317,6 +1377,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('insurance_pii'),
         ],
+        'DPR',
       ),
 
       // Work Order
@@ -1336,6 +1397,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_order'),
         ],
+        'DPR',
       ),
 
       // Inception Report
@@ -1349,6 +1411,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('inception'),
         ],
+        'DPR',
       ),
 
       // Survey
@@ -1362,6 +1425,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('survey'),
         ],
+        'DPR',
       ),
 
       // Geotechnical Investigation
@@ -1375,6 +1439,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('geotech'),
         ],
+        'DPR',
       ),
 
       // Fixing of Alignment
@@ -1388,6 +1453,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('alignment'),
         ],
+        'DPR',
       ),
 
       // Plan & Profile
@@ -1401,6 +1467,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('plan_profile'),
         ],
+        'DPR',
       ),
 
       // Pavement Design
@@ -1414,6 +1481,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pavement_design'),
         ],
+        'DPR',
       ),
 
       // Structures Design
@@ -1427,6 +1495,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('structures_design'),
         ],
+        'DPR',
       ),
 
       // Traffic Study Report
@@ -1440,6 +1509,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('traffic_study'),
         ],
+        'DPR',
       ),
 
       // Junctions
@@ -1453,6 +1523,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('junctions'),
         ],
+        'DPR',
       ),
 
       // Drainage Plan
@@ -1466,6 +1537,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('drainage'),
         ],
+        'DPR',
       ),
 
       // Furniture Layout
@@ -1479,6 +1551,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('furniture_layout'),
         ],
+        'DPR',
       ),
 
       // Miscellaneous Structures
@@ -1492,6 +1565,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('misc_structures'),
         ],
+        'DPR',
       ),
 
       // BOQ
@@ -1512,6 +1586,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('boq'),
         ],
+        'DPR',
       ),
 
       // Draft DPR
@@ -1525,6 +1600,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('draft_dpr'),
         ],
+        'DPR',
       ),
 
       // Environmental Clearance
@@ -1544,6 +1620,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('env_clearance'),
         ],
+        'DPR',
       ),
 
       // Land Acquisition
@@ -1563,6 +1640,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('land_acquisition'),
         ],
+        'DPR',
       ),
 
       // Utility Shifting
@@ -1582,6 +1660,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('utility_shifting'),
         ],
+        'DPR',
       ),
 
       // Quarry Chart
@@ -1595,6 +1674,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('quarry_chart'),
         ],
+        'DPR',
       ),
 
       // Final DPR
@@ -1608,6 +1688,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('final_dpr'),
         ],
+        'DPR',
       ),
 
       // DPR Approval
@@ -1621,6 +1702,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('dpr_approval'),
         ],
+        'DPR',
       ),
 
       // Contractor Bid Doc
@@ -1634,6 +1716,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('contractor_bid_doc'),
         ],
+        'DPR',
       ),
 
       // RFP
@@ -1653,6 +1736,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('rfp'),
         ],
+        'DPR',
       ),
 
       // GCC
@@ -1672,6 +1756,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('gcc'),
         ],
+        'DPR',
       ),
 
       // Schedules
@@ -1691,6 +1776,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('schedules'),
         ],
+        'DPR',
       ),
 
       // Drawings Volume
@@ -1710,6 +1796,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('drawings_volume'),
         ],
+        'DPR',
       ),
     ];
   }
@@ -1734,6 +1821,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_admin_approval'),
         ],
+        'Work',
       ),
 
       // Broad Scope of Work
@@ -1749,6 +1837,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_broad_scope'),
         ],
+        'Work',
       ),
 
       // Technical Sanction
@@ -1769,6 +1858,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_tech_sanction'),
         ],
+        'Work',
       ),
 
       // Detailed Scope of Work
@@ -1784,6 +1874,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_detailed_scope'),
         ],
+        'Work',
       ),
 
       // Type of Contract Proposed
@@ -1797,6 +1888,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_contract_type'),
         ],
+        'Work',
       ),
 
       // DTP Approval
@@ -1810,6 +1902,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_dtp_approval'),
         ],
+        'Work',
       ),
 
       // NIT Invitation
@@ -1829,6 +1922,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_nit_invitation'),
         ],
+        'Work',
       ),
 
       // Uploading of Bid Doc
@@ -1848,6 +1942,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_bid_upload'),
         ],
+        'Work',
       ),
 
       // Pre-Bid Meeting
@@ -1862,6 +1957,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_prebid_meeting'),
         ],
+        'Work',
       ),
 
       // CSD / Replies to Queries
@@ -1881,6 +1977,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_csd'),
         ],
+        'Work',
       ),
 
       // Bid Submission
@@ -1895,6 +1992,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_bid_submission'),
         ],
+        'Work',
       ),
 
       // Bid Opening
@@ -1917,6 +2015,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_bid_opening'),
         ],
+        'Work',
       ),
 
       // Financial Bid Opening
@@ -1955,6 +2054,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_fin_bid_opening'),
         ],
+        'Work',
       ),
 
       // Acceptance of Offer
@@ -1975,6 +2075,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_acceptance'),
         ],
+        'Work',
       ),
 
       // Letter of Intent
@@ -1994,6 +2095,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_loi'),
         ],
+        'Work',
       ),
 
       // Letter of Acceptance
@@ -2013,6 +2115,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_loa'),
         ],
+        'Work',
       ),
 
       // PBG Submission
@@ -2048,6 +2151,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_pbg'),
         ],
+        'Work',
       ),
 
       // Signing of Agreement
@@ -2075,6 +2179,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_agreement'),
         ],
+        'Work',
       ),
 
       // Work Order / Appointed Date
@@ -2110,6 +2215,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('work_order'),
         ],
+        'Work',
       ),
     ];
   }
@@ -2129,6 +2235,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_agreement'),
         ],
+        'PMS',
       ),
 
       // Tender Period
@@ -2144,6 +2251,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_tender_period'),
         ],
+        'PMS',
       ),
 
       // Insurance Submitted
@@ -2163,6 +2271,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_insurance'),
         ],
+        'PMS',
       ),
 
       // 1st Milestone
@@ -2200,6 +2309,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_milestone_1'),
         ],
+        'PMS',
       ),
 
       // 1st Liquidated Damages
@@ -2229,6 +2339,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_ld_1'),
         ],
+        'PMS',
       ),
 
       // 2nd Milestone
@@ -2266,6 +2377,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_milestone_2'),
         ],
+        'PMS',
       ),
 
       // 2nd Liquidated Damages
@@ -2295,6 +2407,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_ld_2'),
         ],
+        'PMS',
       ),
 
       // 3rd Milestone
@@ -2332,6 +2445,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_milestone_3'),
         ],
+        'PMS',
       ),
 
       // 3rd Liquidated Damages
@@ -2361,6 +2475,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_ld_3'),
         ],
+        'PMS',
       ),
 
       // 4th Milestone
@@ -2398,6 +2513,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_milestone_4'),
         ],
+        'PMS',
       ),
 
       // 4th Liquidated Damages
@@ -2427,6 +2543,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_ld_4'),
         ],
+        'PMS',
       ),
 
       // 5th Milestone
@@ -2464,6 +2581,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_milestone_5'),
         ],
+        'PMS',
       ),
 
       // Final Liquidated Damages
@@ -2493,6 +2611,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_ld_final'),
         ],
+        'PMS',
       ),
 
       // Change of Scope Order
@@ -2529,6 +2648,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_cos'),
         ],
+        'PMS',
       ),
 
       // Extension of Time
@@ -2550,6 +2670,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_eot'),
         ],
+        'PMS',
       ),
 
       // Cumulative Expenditure
@@ -2573,6 +2694,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_cum_exp'),
         ],
+        'PMS',
       ),
 
       // Renewal PBG
@@ -2593,6 +2715,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_renewal_pbg'),
         ],
+        'PMS',
       ),
 
       // Renewal of Insurance
@@ -2613,6 +2736,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_renewal_insurance'),
         ],
+        'PMS',
       ),
 
       // Revised Estimate
@@ -2632,6 +2756,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_revised_estimate'),
         ],
+        'PMS',
       ),
 
       // Revised AA
@@ -2667,6 +2792,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_revised_aa'),
         ],
+        'PMS',
       ),
 
       // Final Bill & Expenditure
@@ -2703,6 +2829,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_final_bill'),
         ],
+        'PMS',
       ),
 
       // LAQ/LCQ
@@ -2731,6 +2858,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_laq_lcq'),
         ],
+        'PMS',
       ),
 
       // Audit Para Replies
@@ -2784,6 +2912,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_audit_para'),
         ],
+        'PMS',
       ),
 
       // Technical Audit / Reports
@@ -2805,6 +2934,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
           ),
           _buildResponsibilityFields('pms_tech_audit'),
         ],
+        'PMS',
       ),
     ];
   }
