@@ -37,6 +37,7 @@ class _CriticalSubsectionsScreenState
   final Set<int> _expandedProjects = {}; // Track expanded project IDs
   List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical items
   List<int>? _cachedProjectIds; // Cache project IDs to detect changes
+  final Map<String, bool> _toggledOffItems = {}; // Track items toggled off (key = "projectId_category_subsectionName")
 
   @override
   void initState() {
@@ -97,6 +98,22 @@ class _CriticalSubsectionsScreenState
             ),
           ],
         ),
+        actions: _toggledOffItems.isNotEmpty
+            ? [
+                ElevatedButton.icon(
+                  onPressed: _showRemoveCriticalConfirmation,
+                  icon: const Icon(Icons.check, size: 18),
+                  label: Text('Submit (${_toggledOffItems.length})'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    elevation: 2,
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ]
+            : null,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
@@ -538,6 +555,10 @@ class _CriticalSubsectionsScreenState
     final createdAt = item['created_at'] as String;
     final personResponsible = item['person_responsible'] as String?;
 
+    // Create unique key for this item
+    final itemKey = '${projectId}_${category}_$subsectionName';
+    final isToggledOff = _toggledOffItems[itemKey] ?? false;
+
     // Parse date
     DateTime? createdDate;
     try {
@@ -590,6 +611,7 @@ class _CriticalSubsectionsScreenState
             // Clear cache to force reload
             _cachedCriticalItems = null;
             _cachedProjectIds = null;
+            _toggledOffItems.clear();
           });
         }
       },
@@ -597,29 +619,42 @@ class _CriticalSubsectionsScreenState
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: isToggledOff
+              ? AppColors.background.withOpacity(0.5)
+              : AppColors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: const Color(0xFFEF4444).withOpacity(0.3),
+            color: isToggledOff
+                ? AppColors.border
+                : const Color(0xFFEF4444).withOpacity(0.3),
             width: 1.5,
           ),
         ),
         child: Row(
           children: [
-            // Critical Icon
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.error,
-                color: Color(0xFFEF4444),
-                size: 20,
+            // Critical Toggle Switch
+            Transform.scale(
+              scale: 0.8,
+              child: Switch(
+                value: !isToggledOff, // true = critical (on), false = not critical (off)
+                onChanged: (value) {
+                  setState(() {
+                    if (value) {
+                      // Turned on - remove from toggled off list
+                      _toggledOffItems.remove(itemKey);
+                    } else {
+                      // Turned off - add to toggled off list
+                      _toggledOffItems[itemKey] = true;
+                    }
+                  });
+                },
+                activeColor: const Color(0xFFEF4444),
+                activeTrackColor: const Color(0xFFEF4444).withOpacity(0.3),
+                inactiveThumbColor: AppColors.textTertiary,
+                inactiveTrackColor: AppColors.border,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             // Content
             Expanded(
               child: Column(
@@ -627,10 +662,14 @@ class _CriticalSubsectionsScreenState
                 children: [
                   Text(
                     subsectionName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: isToggledOff
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
+                      decoration:
+                          isToggledOff ? TextDecoration.lineThrough : null,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -809,6 +848,184 @@ class _CriticalSubsectionsScreenState
       return '${difference.inDays} days ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  void _showRemoveCriticalConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.error_outline,
+                  color: AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Remove Critical Status',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to remove the critical status from ${_toggledOffItems.length} subsection(s)?',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.warning.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'This action cannot be undone.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                side: BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'No',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _submitRemoveCritical();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Yes',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _submitRemoveCritical() async {
+    try {
+      final criticalRepo = ref.read(criticalSubsectionsRepositoryProvider);
+
+      // Process each toggled-off item
+      for (var entry in _toggledOffItems.entries) {
+        // Parse the key: projectId_category_subsectionName
+        final parts = entry.key.split('_');
+        if (parts.length >= 3) {
+          final projectId = int.parse(parts[0]);
+          final category = parts[1];
+          final subsectionName = parts.sublist(2).join('_'); // Rejoin in case subsection name has underscores
+
+          // Remove from database
+          await criticalRepo.removeCritical(projectId, category, subsectionName);
+        }
+      }
+
+      // Clear the toggled-off items
+      setState(() {
+        _toggledOffItems.clear();
+        // Clear cache to force reload
+        _cachedCriticalItems = null;
+        _cachedProjectIds = null;
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Critical status removed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 }
