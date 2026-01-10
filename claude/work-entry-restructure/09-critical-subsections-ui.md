@@ -10,7 +10,9 @@ Created a dedicated UI screen to view all critical subsections across projects, 
 1. **Categories Screen (Dashboard)** - View critical items for ALL projects
 2. **Projects Screen (within category)** - View critical items for projects in that specific category
 
-## Bug Fix: Project State Management
+## Bug Fixes & Enhancements
+
+### Fix 1: Project State Management
 
 **Issue**: When navigating from the dashboard, the screen was showing only the last visited category's projects instead of all projects.
 
@@ -21,6 +23,33 @@ Created a dedicated UI screen to view all critical subsections across projects, 
 - When `categoryId != null` (from category): Calls `loadProjectsByCategoryId(categoryId)`
 
 This ensures the provider state is always synchronized with the intended view.
+
+### Enhancement 1: Display Project Category
+
+**Feature**: Added project category badge below each project name to show which category (e.g., "Nashik Kumbhmela", "HAM Projects") the project belongs to.
+
+**Implementation**:
+1. Updated `_loadCriticalSubsections()` to include project category information:
+   - `project_category_name`: The name of the category the project belongs to
+   - `project_category_color`: The color code for the category
+
+2. Updated `_buildProjectGroup()` to display the category badge:
+   - Category name displayed in a colored badge below project name
+   - Badge uses the category's custom color if available
+   - Falls back to primary color if category color is not set
+
+**UI Details**:
+```
+┌─────────────────────────────────────────────────┐
+│ 📁 Project Name                    [3 Critical]  │
+│    [Category Name]                               │
+├─────────────────────────────────────────────────┤
+│ ⚠ Subsection 1                                →│
+│ [DPR]                           Today            │
+└─────────────────────────────────────────────────┘
+```
+
+This helps users identify which category each project belongs to, especially useful when viewing all critical items across all categories from the dashboard.
 
 ---
 
