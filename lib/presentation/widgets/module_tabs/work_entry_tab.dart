@@ -30,6 +30,9 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   // Form data storage for DPR fields
   Map<String, dynamic> _formData = {};
 
+  // Critical subsections tracking
+  Map<String, bool> _criticalSubsections = {};
+
   // Section expansion states
   bool _dprSectionExpanded = true;
   bool _workSectionExpanded = false;
@@ -66,6 +69,18 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     return title.toLowerCase().contains(_searchQuery);
   }
 
+  // Helper method to toggle critical status of a subsection
+  void _toggleCritical(String subsectionKey) {
+    setState(() {
+      _criticalSubsections[subsectionKey] = !(_criticalSubsections[subsectionKey] ?? false);
+    });
+  }
+
+  // Helper method to check if a subsection is marked as critical
+  bool _isCritical(String subsectionKey) {
+    return _criticalSubsections[subsectionKey] ?? false;
+  }
+
   // Helper method to build a searchable subsection
   List<Widget> _buildSearchableSubsection(
     String title,
@@ -76,7 +91,15 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     }
 
     return [
-      _buildSectionHeader(title),
+      _buildSectionHeader(
+        title,
+        isCritical: _criticalSubsections[title] ?? false,
+        onCriticalToggle: () {
+          setState(() {
+            _criticalSubsections[title] = !(_criticalSubsections[title] ?? false);
+          });
+        },
+      ),
       ...fields,
       const SizedBox(height: 24),
       const Divider(),
@@ -2864,7 +2887,11 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
 
   // SUB-SECTION HEADER - Creates clear visual breaks within major sections
   // Excel-like scanning: bold, color-coded, adequate whitespace
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(
+    String title, {
+    bool isCritical = false,
+    VoidCallback? onCriticalToggle,
+  }) {
     return Container(
       padding: const EdgeInsets.only(top: 20, bottom: 12),
       child: Row(
@@ -2879,15 +2906,36 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.2,
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.2,
+              ),
             ),
           ),
+          // Critical marker button
+          if (onCriticalToggle != null)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onCriticalToggle,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    isCritical ? Icons.error : Icons.error_outline,
+                    size: 20,
+                    color: isCritical
+                        ? const Color(0xFFEF4444) // Red for critical
+                        : AppColors.textSecondary, // Grey for not critical
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
