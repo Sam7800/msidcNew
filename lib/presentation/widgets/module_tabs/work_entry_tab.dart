@@ -22,9 +22,7 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   bool _isEditing = false;
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for top-level fields
-  final _workIdController = TextEditingController();
-  final _nameOfWorkController = TextEditingController();
+  // Controllers
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   String _searchQuery = '';
@@ -33,13 +31,11 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
   Map<String, dynamic> _formData = {};
 
   // Section expansion states
-  bool _basicInfoExpanded = true;
   bool _dprSectionExpanded = true;
   bool _workSectionExpanded = false;
   bool _pmsSectionExpanded = false;
 
   // Section keys for scrolling
-  final GlobalKey _basicInfoKey = GlobalKey();
   final GlobalKey _dprSectionKey = GlobalKey();
   final GlobalKey _workSectionKey = GlobalKey();
   final GlobalKey _pmsSectionKey = GlobalKey();
@@ -52,99 +48,40 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
 
   @override
   void dispose() {
-    _workIdController.dispose();
-    _nameOfWorkController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  // Search and auto-scroll functionality
+  // Search functionality - filters subsection cards
   void _performSearch(String query) {
-    if (query.isEmpty) {
-      setState(() {
-        _searchQuery = '';
-      });
-      return;
-    }
-
-    final searchLower = query.toLowerCase().trim();
-
     setState(() {
-      _searchQuery = searchLower;
+      _searchQuery = query.toLowerCase().trim();
     });
+  }
 
-    // Define searchable content for each section with more keywords
-    final sections = [
-      {
-        'key': _basicInfoKey,
-        'expandField': 'basic',
-        'content': 'basic information work id name of work',
-      },
-      {
-        'key': _dprSectionKey,
-        'expandField': 'dpr',
-        'content': 'dpr administrative approval aa amount broad scope bid consultant selection agreement nit appointment survey geotechnical investigation soil alignment plan profile pavement design structures bridge traffic study report junctions drainage furniture layout signage miscellaneous boq quantity draft environmental clearance ec forest land acquisition utility shifting power quarry chart final approval contractor rfp gcc schedules drawings volume',
-      },
-      {
-        'key': _workSectionKey,
-        'expandField': 'work',
-        'content': 'work section contractor appointment agreement work order commencement mobilization site drawings possession completion certificate extensions defect liability final bill payment',
-      },
-      {
-        'key': _pmsSectionKey,
-        'expandField': 'pms',
-        'content': 'pms project monitoring milestone progress technical audit revised estimate',
-      },
-    ];
+  // Helper method to check if a subsection title matches the search query
+  bool _matchesSearch(String title) {
+    if (_searchQuery.isEmpty) return true;
+    return title.toLowerCase().contains(_searchQuery);
+  }
 
-    // Find matching section
-    for (var section in sections) {
-      final content = section['content'] as String;
-      if (content.contains(searchLower)) {
-        // Expand the appropriate section
-        final expandField = section['expandField'] as String;
-        setState(() {
-          if (expandField == 'basic') _basicInfoExpanded = true;
-          if (expandField == 'dpr') _dprSectionExpanded = true;
-          if (expandField == 'work') _workSectionExpanded = true;
-          if (expandField == 'pms') _pmsSectionExpanded = true;
-        });
-
-        // Scroll to section after expansion animation and setState completes
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (!mounted) return;
-
-          final key = section['key'] as GlobalKey;
-          final context = key.currentContext;
-
-          if (context != null) {
-            try {
-              // Get the RenderBox of the widget
-              final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-              if (renderBox != null) {
-                // Get the position of the widget relative to the scroll view
-                final position = renderBox.localToGlobal(Offset.zero);
-
-                // Calculate scroll offset (subtract app bar height ~100px to show section at top)
-                final scrollOffset = _scrollController.offset + position.dy - 100;
-
-                // Animate to the calculated position
-                _scrollController.animateTo(
-                  scrollOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-                  duration: const Duration(milliseconds: 600),
-                  curve: Curves.easeInOutCubic,
-                );
-              }
-            } catch (e) {
-              print('[WorkEntryTab] Error scrolling to section: $e');
-            }
-          }
-        });
-
-        break; // Only scroll to first match
-      }
+  // Helper method to build a searchable subsection
+  List<Widget> _buildSearchableSubsection(
+    String title,
+    List<Widget> fields,
+  ) {
+    if (!_matchesSearch(title)) {
+      return []; // Hide subsection if it doesn't match search
     }
+
+    return [
+      _buildSectionHeader(title),
+      ...fields,
+      const SizedBox(height: 24),
+      const Divider(),
+      const SizedBox(height: 16),
+    ];
   }
 
   Future<void> _loadData() async {
@@ -159,9 +96,6 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
       _isLoading = false;
 
       if (data != null) {
-        _workIdController.text = data.workId ?? '';
-        _nameOfWorkController.text = data.nameOfWork ?? '';
-
         // Load PMS section with 'pms_' prefix for form fields
         // Also map '_amount' back to '_amt' for form compatibility
         final pmsFormData = <String, dynamic>{};
@@ -199,8 +133,8 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     final updatedData = WorkEntryData(
       id: _workEntryData?.id,
       projectId: widget.projectId,
-      workId: _workIdController.text.trim(),
-      nameOfWork: _nameOfWorkController.text.trim(),
+      workId: _workEntryData?.workId,
+      nameOfWork: _workEntryData?.nameOfWork,
       personResponsible: null,
       postHeld: null,
       pendingWith: null,
@@ -826,24 +760,33 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
                         ),
                         child: TextField(
                           controller: _searchController,
-                          enabled: false,
+                          onChanged: _performSearch,
                           style: const TextStyle(
                             fontSize: 14,
-                            color: AppColors.textTertiary,
+                            color: AppColors.textPrimary,
                           ),
-                          decoration: const InputDecoration(
-                            hintText: 'Search fields...',
-                            hintStyle: TextStyle(
+                          decoration: InputDecoration(
+                            hintText: 'Search sections...',
+                            hintStyle: const TextStyle(
                               fontSize: 14,
                               color: AppColors.textTertiary,
                             ),
-                            prefixIcon: Icon(
+                            prefixIcon: const Icon(
                               Icons.search,
                               size: 20,
                               color: AppColors.textSecondary,
                             ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _performSearch('');
+                                    },
+                                  )
+                                : null,
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 10,
                             ),
@@ -912,21 +855,6 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
                 controller: _scrollController,
                 padding: const EdgeInsets.all(24),
                 children: [
-                  // Basic Info Section
-                  _buildSection(
-                    key: _basicInfoKey,
-                    title: 'Basic Information',
-                    subtitle: 'Work identification details',
-                    icon: Icons.info_outline,
-                    color: AppColors.primary,
-                    isExpanded: _basicInfoExpanded,
-                    onExpand: (expanded) =>
-                        setState(() => _basicInfoExpanded = expanded),
-                    children: _buildBasicInfoFields(),
-                  ),
-
-                  const SizedBox(height: 16),
-
                   // DPR Section
                   _buildSection(
                     key: _dprSectionKey,
@@ -1062,1804 +990,1799 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
     );
   }
 
-  List<Widget> _buildBasicInfoFields() {
-    return [
-      _buildLabeledTextField(
-        label: 'Work ID',
-        controller: _workIdController,
-        hint: 'Enter alphanumeric work identifier',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Name of Work',
-        controller: _nameOfWorkController,
-        hint: 'Enter work name/description',
-        enabled: _isEditing,
-      ),
-    ];
-  }
 
   List<Widget> _buildDPRFields() {
     return [
       // AA (Administrative Approval)
-      _buildSectionHeader('Administrative Approval (AA)'),
-      _buildRadioGroupField(
-        label: 'AA Status',
-        fieldKey: 'aa_status',
-        options: ['Awaited', 'Accorded'],
+      ..._buildSearchableSubsection(
+        'Administrative Approval (AA)',
+        [
+          _buildRadioGroupField(
+            label: 'AA Status',
+            fieldKey: 'aa_status',
+            options: ['Awaited', 'Accorded'],
+          ),
+          _buildLabeledTextField(
+            label: 'AA Amount',
+            fieldKey: 'aa_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('aa'),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Broad Scope in AA',
+            fieldKey: 'broad_scope_aa',
+            hint: 'Enter broad scope description',
+            enabled: _isEditing,
+            maxLines: 3,
+          ),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'AA Amount',
-        fieldKey: 'aa_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('aa'),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Broad Scope in AA',
-        fieldKey: 'broad_scope_aa',
-        hint: 'Enter broad scope description',
-        enabled: _isEditing,
-        maxLines: 3,
-      ),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // DPR Bid Doc for Consultant
-      _buildSectionHeader('DPR Bid Doc for Consultant'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'dpr_bid_doc_status',
-        options: ['Not Started', 'In progress', 'Ready', 'Approved'],
+      ..._buildSearchableSubsection(
+        'DPR Bid Doc for Consultant',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'dpr_bid_doc_status',
+            options: ['Not Started', 'In progress', 'Ready', 'Approved'],
+          ),
+          _buildResponsibilityFields('dpr_bid_doc'),
+        ],
       ),
-      _buildResponsibilityFields('dpr_bid_doc'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Inviting DPR Bid
-      _buildSectionHeader('Inviting DPR Bid'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'invite_dpr_bid_status',
-        options: ['Not invited yet', 'Invited'],
+      ..._buildSearchableSubsection(
+        'Inviting DPR Bid',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'invite_dpr_bid_status',
+            options: ['Not invited yet', 'Invited'],
+          ),
+          _buildLabeledDateField(
+            label: 'Invited Date',
+            fieldKey: 'invite_dpr_bid_date',
+            hint: 'Select invited date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('invite_dpr'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Invited Date',
-        fieldKey: 'invite_dpr_bid_date',
-        hint: 'Select invited date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('invite_dpr'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Pre-Bid Meeting
-      _buildSectionHeader('Pre-Bid Meeting'),
-      _buildLabeledDateField(
-        label: 'Meeting Date',
-        fieldKey: 'prebid_meeting_date',
-        hint: 'Select meeting date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Pre-Bid Meeting',
+        [
+          _buildLabeledDateField(
+            label: 'Meeting Date',
+            fieldKey: 'prebid_meeting_date',
+            hint: 'Select meeting date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '# of Participants',
+            fieldKey: 'prebid_participants',
+            hint: 'Enter number of participants',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('prebid'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '# of Participants',
-        fieldKey: 'prebid_participants',
-        hint: 'Enter number of participants',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('prebid'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // CSD
-      _buildSectionHeader('CSD'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'csd_status',
-        options: ['In Process', 'Approved', 'Uploaded'],
+      ..._buildSearchableSubsection(
+        'CSD',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'csd_status',
+            options: ['In Process', 'Approved', 'Uploaded'],
+          ),
+          _buildLabeledDateField(
+            label: 'Date',
+            fieldKey: 'csd_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('csd'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Date',
-        fieldKey: 'csd_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('csd'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Bid Submission
-      _buildSectionHeader('Bid Submission'),
-      _buildLabeledDateField(
-        label: 'Submission Date',
-        fieldKey: 'bid_submission_date',
-        hint: 'Select submission date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Bid Submission',
+        [
+          _buildLabeledDateField(
+            label: 'Submission Date',
+            fieldKey: 'bid_submission_date',
+            hint: 'Select submission date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('bid_submission'),
+        ],
       ),
-      _buildResponsibilityFields('bid_submission'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Bid Opening
-      _buildSectionHeader('Bid Opening'),
-      _buildLabeledDateField(
-        label: 'Opening Date',
-        fieldKey: 'bid_opening_date',
-        hint: 'Select opening date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Bid Opening',
+        [
+          _buildLabeledDateField(
+            label: 'Opening Date',
+            fieldKey: 'bid_opening_date',
+            hint: 'Select opening date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '# Submitted',
+            fieldKey: 'bid_opening_count',
+            hint: 'Enter number of bids submitted',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('bid_opening'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '# Submitted',
-        fieldKey: 'bid_opening_count',
-        hint: 'Enter number of bids submitted',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('bid_opening'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Technical Evaluation
-      _buildSectionHeader('Technical Evaluation'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'tech_eval_status',
-        options: ['In progress', 'Completed'],
+      ..._buildSearchableSubsection(
+        'Technical Evaluation',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'tech_eval_status',
+            options: ['In progress', 'Completed'],
+          ),
+          _buildLabeledTextField(
+            label: '# Qualified',
+            fieldKey: 'tech_eval_qualified',
+            hint: 'Enter number qualified',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('tech_eval'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: '# Qualified',
-        fieldKey: 'tech_eval_qualified',
-        hint: 'Enter number qualified',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('tech_eval'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Financial Opening
-      _buildSectionHeader('Financial Opening'),
-      _buildLabeledDateField(
-        label: 'Opening Date',
-        fieldKey: 'fin_opening_date',
-        hint: 'Select opening date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Financial Opening',
+        [
+          _buildLabeledDateField(
+            label: 'Opening Date',
+            fieldKey: 'fin_opening_date',
+            hint: 'Select opening date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Successful Bid',
+            fieldKey: 'fin_opening_bid',
+            hint: 'Enter successful bid reference',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount (Rs. Lakhs)',
+            fieldKey: 'fin_opening_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '(+ / -) Variance',
+            fieldKey: 'fin_opening_variance',
+            hint: 'Enter variance',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('fin_opening'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Successful Bid',
-        fieldKey: 'fin_opening_bid',
-        hint: 'Enter successful bid reference',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount (Rs. Lakhs)',
-        fieldKey: 'fin_opening_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '(+ / -) Variance',
-        fieldKey: 'fin_opening_variance',
-        hint: 'Enter variance',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('fin_opening'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Acceptance of Bid
-      _buildSectionHeader('Acceptance of Bid'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'bid_acceptance_status',
-        options: ['In progress', 'Accepted'],
+      ..._buildSearchableSubsection(
+        'Acceptance of Bid',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'bid_acceptance_status',
+            options: ['In progress', 'Accepted'],
+          ),
+          _buildLabeledTextField(
+            label: 'Final Amount',
+            fieldKey: 'bid_acceptance_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('bid_acceptance'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Final Amount',
-        fieldKey: 'bid_acceptance_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('bid_acceptance'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // LOA
-      _buildSectionHeader('LOA (Letter of Acceptance)'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'loa_status',
-        options: ['Not issued', 'Issued'],
+      ..._buildSearchableSubsection(
+        'LOA (Letter of Acceptance)',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'loa_status',
+            options: ['Not issued', 'Issued'],
+          ),
+          _buildLabeledDateField(
+            label: 'Issue Date',
+            fieldKey: 'loa_date',
+            hint: 'Select issue date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('loa'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Issue Date',
-        fieldKey: 'loa_date',
-        hint: 'Select issue date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('loa'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // PBG Submission
-      _buildSectionHeader('PBG Submission'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pbg_status',
-        options: ['Not submitted', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'PBG Submission',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pbg_status',
+            options: ['Not submitted', 'Submitted'],
+          ),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'pbg_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Submission Date',
+            fieldKey: 'pbg_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Period (months)',
+            fieldKey: 'pbg_period',
+            hint: 'Enter period in months',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pbg'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'pbg_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Submission Date',
-        fieldKey: 'pbg_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Period (months)',
-        fieldKey: 'pbg_period',
-        hint: 'Enter period in months',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pbg'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Insurance Submission (PII)
-      _buildSectionHeader('Insurance Submission (PII)'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'insurance_pii_status',
-        options: ['Not submitted', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Insurance Submission (PII)',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'insurance_pii_status',
+            options: ['Not submitted', 'Submitted'],
+          ),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'insurance_pii_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Submission Date',
+            fieldKey: 'insurance_pii_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Period (months)',
+            fieldKey: 'insurance_pii_period',
+            hint: 'Enter period in months',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('insurance_pii'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'insurance_pii_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Submission Date',
-        fieldKey: 'insurance_pii_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Period (months)',
-        fieldKey: 'insurance_pii_period',
-        hint: 'Enter period in months',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('insurance_pii'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Work Order
-      _buildSectionHeader('Work Order'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_order_status',
-        options: ['Not Issued', 'Issued'],
+      ..._buildSearchableSubsection(
+        'Work Order',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_order_status',
+            options: ['Not Issued', 'Issued'],
+          ),
+          _buildLabeledDateField(
+            label: 'Issue Date',
+            fieldKey: 'work_order_date',
+            hint: 'Select issue date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_order'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Issue Date',
-        fieldKey: 'work_order_date',
-        hint: 'Select issue date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_order'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Inception Report
-      _buildSectionHeader('Inception Report'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'inception_report_status',
-        options: ['Not submitted', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Inception Report',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'inception_report_status',
+            options: ['Not submitted', 'Submitted'],
+          ),
+          _buildResponsibilityFields('inception'),
+        ],
       ),
-      _buildResponsibilityFields('inception'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Survey
-      _buildSectionHeader('Survey'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'survey_status',
-        options: ['In progress', 'Completed', 'Validated'],
+      ..._buildSearchableSubsection(
+        'Survey',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'survey_status',
+            options: ['In progress', 'Completed', 'Validated'],
+          ),
+          _buildResponsibilityFields('survey'),
+        ],
       ),
-      _buildResponsibilityFields('survey'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Geotechnical Investigation
-      _buildSectionHeader('Geotechnical Investigation'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'geotech_status',
-        options: ['In progress', 'Completed'],
+      ..._buildSearchableSubsection(
+        'Geotechnical Investigation',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'geotech_status',
+            options: ['In progress', 'Completed'],
+          ),
+          _buildResponsibilityFields('geotech'),
+        ],
       ),
-      _buildResponsibilityFields('geotech'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Fixing of Alignment
-      _buildSectionHeader('Fixing of Alignment'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'alignment_status',
-        options: ['In progress', 'Prepared', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Fixing of Alignment',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'alignment_status',
+            options: ['In progress', 'Prepared', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('alignment'),
+        ],
       ),
-      _buildResponsibilityFields('alignment'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Plan & Profile
-      _buildSectionHeader('Plan & Profile'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'plan_profile_status',
-        options: ['In progress', 'Completed', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Plan & Profile',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'plan_profile_status',
+            options: ['In progress', 'Completed', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('plan_profile'),
+        ],
       ),
-      _buildResponsibilityFields('plan_profile'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Pavement Design
-      _buildSectionHeader('Pavement Design'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pavement_design_status',
-        options: ['Prepared', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Pavement Design',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pavement_design_status',
+            options: ['Prepared', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('pavement_design'),
+        ],
       ),
-      _buildResponsibilityFields('pavement_design'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Structures Design
-      _buildSectionHeader('Structures Design'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'structures_design_status',
-        options: ['In progress', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Structures Design',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'structures_design_status',
+            options: ['In progress', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('structures_design'),
+        ],
       ),
-      _buildResponsibilityFields('structures_design'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Traffic Study Report
-      _buildSectionHeader('Traffic Study Report'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'traffic_study_status',
-        options: ['Not started', 'In progress', 'Completed', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Traffic Study Report',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'traffic_study_status',
+            options: ['Not started', 'In progress', 'Completed', 'Submitted'],
+          ),
+          _buildResponsibilityFields('traffic_study'),
+        ],
       ),
-      _buildResponsibilityFields('traffic_study'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Junctions
-      _buildSectionHeader('Junctions'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'junctions_status',
-        options: ['In progress', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Junctions',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'junctions_status',
+            options: ['In progress', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('junctions'),
+        ],
       ),
-      _buildResponsibilityFields('junctions'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Drainage Plan
-      _buildSectionHeader('Drainage Plan'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'drainage_status',
-        options: ['In progress', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Drainage Plan',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'drainage_status',
+            options: ['In progress', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('drainage'),
+        ],
       ),
-      _buildResponsibilityFields('drainage'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Furniture Layout
-      _buildSectionHeader('Furniture Layout'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'furniture_layout_status',
-        options: ['Not Started', 'In progress', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Furniture Layout',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'furniture_layout_status',
+            options: ['Not Started', 'In progress', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('furniture_layout'),
+        ],
       ),
-      _buildResponsibilityFields('furniture_layout'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Miscellaneous Structures
-      _buildSectionHeader('Miscellaneous Structures'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'misc_structures_status',
-        options: ['Not started', 'In progress', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Miscellaneous Structures',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'misc_structures_status',
+            options: ['Not started', 'In progress', 'Submitted', 'Approved'],
+          ),
+          _buildResponsibilityFields('misc_structures'),
+        ],
       ),
-      _buildResponsibilityFields('misc_structures'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // BOQ
-      _buildSectionHeader('BOQ (Bill of Quantities)'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'boq_status',
-        options: ['Not Started', 'In progress', 'Ready'],
+      ..._buildSearchableSubsection(
+        'BOQ (Bill of Quantities)',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'boq_status',
+            options: ['Not Started', 'In progress', 'Ready'],
+          ),
+          _buildLabeledTextField(
+            label: 'Amount (Rs. Lakhs)',
+            fieldKey: 'boq_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('boq'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Amount (Rs. Lakhs)',
-        fieldKey: 'boq_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('boq'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Draft DPR
-      _buildSectionHeader('Draft DPR'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'draft_dpr_status',
-        options: ['In progress', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Draft DPR',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'draft_dpr_status',
+            options: ['In progress', 'Submitted'],
+          ),
+          _buildResponsibilityFields('draft_dpr'),
+        ],
       ),
-      _buildResponsibilityFields('draft_dpr'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Environmental Clearance
-      _buildSectionHeader('Environmental Clearance'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'env_clearance_applicable',
-        options: ['Not Applicable', 'Applicable'],
+      ..._buildSearchableSubsection(
+        'Environmental Clearance',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'env_clearance_applicable',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          _buildLabeledTextField(
+            label: 'Status (if applicable)',
+            fieldKey: 'env_clearance_status',
+            hint: 'Enter status',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('env_clearance'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Status (if applicable)',
-        fieldKey: 'env_clearance_status',
-        hint: 'Enter status',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('env_clearance'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Land Acquisition
-      _buildSectionHeader('Land Acquisition'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'land_acquisition_applicable',
-        options: ['Not Applicable', 'Applicable'],
+      ..._buildSearchableSubsection(
+        'Land Acquisition',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'land_acquisition_applicable',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          _buildLabeledTextField(
+            label: 'Status (if applicable)',
+            fieldKey: 'land_acquisition_status',
+            hint: 'Enter status',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('land_acquisition'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Status (if applicable)',
-        fieldKey: 'land_acquisition_status',
-        hint: 'Enter status',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('land_acquisition'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Utility Shifting
-      _buildSectionHeader('Utility Shifting'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'utility_shifting_applicable',
-        options: ['Not Applicable', 'Applicable'],
+      ..._buildSearchableSubsection(
+        'Utility Shifting',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'utility_shifting_applicable',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          _buildLabeledTextField(
+            label: 'Status (if applicable)',
+            fieldKey: 'utility_shifting_status',
+            hint: 'Enter status',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('utility_shifting'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Status (if applicable)',
-        fieldKey: 'utility_shifting_status',
-        hint: 'Enter status',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('utility_shifting'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Quarry Chart
-      _buildSectionHeader('Quarry Chart'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'quarry_chart_status',
-        options: ['Not Started', 'Ready'],
+      ..._buildSearchableSubsection(
+        'Quarry Chart',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'quarry_chart_status',
+            options: ['Not Started', 'Ready'],
+          ),
+          _buildResponsibilityFields('quarry_chart'),
+        ],
       ),
-      _buildResponsibilityFields('quarry_chart'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Final DPR
-      _buildSectionHeader('Final DPR'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'final_dpr_status',
-        options: ['Not Started', 'In progress', 'Ready', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Final DPR',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'final_dpr_status',
+            options: ['Not Started', 'In progress', 'Ready', 'Submitted'],
+          ),
+          _buildResponsibilityFields('final_dpr'),
+        ],
       ),
-      _buildResponsibilityFields('final_dpr'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // DPR Approval
-      _buildSectionHeader('DPR Approval'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'dpr_approval_status',
-        options: ['In Process', 'Approved'],
+      ..._buildSearchableSubsection(
+        'DPR Approval',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'dpr_approval_status',
+            options: ['In Process', 'Approved'],
+          ),
+          _buildResponsibilityFields('dpr_approval'),
+        ],
       ),
-      _buildResponsibilityFields('dpr_approval'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Contractor Bid Doc
-      _buildSectionHeader('Contractor Bid Doc'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'contractor_bid_doc_status',
-        options: ['Not Started', 'In progress', 'Ready', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Contractor Bid Doc',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'contractor_bid_doc_status',
+            options: ['Not Started', 'In progress', 'Ready', 'Submitted'],
+          ),
+          _buildResponsibilityFields('contractor_bid_doc'),
+        ],
       ),
-      _buildResponsibilityFields('contractor_bid_doc'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // RFP
-      _buildSectionHeader('RFP (Request for Proposal)'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'rfp_status',
-        options: [
-          'Not started',
-          'In progress',
-          'Ready',
-          'Submitted',
-          'Approved',
+      ..._buildSearchableSubsection(
+        'RFP (Request for Proposal)',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'rfp_status',
+            options: [
+              'Not started',
+              'In progress',
+              'Ready',
+              'Submitted',
+              'Approved',
+            ],
+          ),
+          _buildResponsibilityFields('rfp'),
         ],
       ),
-      _buildResponsibilityFields('rfp'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // GCC
-      _buildSectionHeader('GCC (General Conditions of Contract)'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'gcc_status',
-        options: [
-          'Not started',
-          'In progress',
-          'Ready',
-          'Submitted',
-          'Approved',
+      ..._buildSearchableSubsection(
+        'GCC (General Conditions of Contract)',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'gcc_status',
+            options: [
+              'Not started',
+              'In progress',
+              'Ready',
+              'Submitted',
+              'Approved',
+            ],
+          ),
+          _buildResponsibilityFields('gcc'),
         ],
       ),
-      _buildResponsibilityFields('gcc'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Schedules
-      _buildSectionHeader('Schedules'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'schedules_status',
-        options: [
-          'Not started',
-          'In progress',
-          'Ready',
-          'Submitted',
-          'Approved',
+      ..._buildSearchableSubsection(
+        'Schedules',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'schedules_status',
+            options: [
+              'Not started',
+              'In progress',
+              'Ready',
+              'Submitted',
+              'Approved',
+            ],
+          ),
+          _buildResponsibilityFields('schedules'),
         ],
       ),
-      _buildResponsibilityFields('schedules'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Drawings Volume
-      _buildSectionHeader('Drawings Volume'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'drawings_volume_status',
-        options: [
-          'Not Started',
-          'In progress',
-          'Ready',
-          'Submitted',
-          'Approved',
+      ..._buildSearchableSubsection(
+        'Drawings Volume',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'drawings_volume_status',
+            options: [
+              'Not Started',
+              'In progress',
+              'Ready',
+              'Submitted',
+              'Approved',
+            ],
+          ),
+          _buildResponsibilityFields('drawings_volume'),
         ],
       ),
-      _buildResponsibilityFields('drawings_volume'),
     ];
   }
 
   List<Widget> _buildWorkFields() {
     return [
       // Administrative Approval
-      _buildSectionHeader('Administrative Approval'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_admin_approval_status',
-        options: ['Not Yet', 'Yes'],
+      ..._buildSearchableSubsection(
+        'Administrative Approval',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_admin_approval_status',
+            options: ['Not Yet', 'Yes'],
+          ),
+          _buildLabeledTextField(
+            label: 'Amount (Rs.)',
+            fieldKey: 'work_admin_approval_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_admin_approval'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Amount (Rs.)',
-        fieldKey: 'work_admin_approval_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_admin_approval'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Broad Scope of Work
-      _buildSectionHeader('Broad Scope of Work'),
-      _buildLabeledTextField(
-        label: 'Description',
-        fieldKey: 'work_broad_scope',
-        hint: 'Enter broad scope description (up to 500 words)',
-        enabled: _isEditing,
-        maxLines: 10,
+      ..._buildSearchableSubsection(
+        'Broad Scope of Work',
+        [
+          _buildLabeledTextField(
+            label: 'Description',
+            fieldKey: 'work_broad_scope',
+            hint: 'Enter broad scope description (up to 500 words)',
+            enabled: _isEditing,
+            maxLines: 10,
+          ),
+          _buildResponsibilityFields('work_broad_scope'),
+        ],
       ),
-      _buildResponsibilityFields('work_broad_scope'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Technical Sanction
-      _buildSectionHeader('Technical Sanction'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_tech_sanction_status',
-        options: ['In progress', 'Ready', 'Submitted', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Technical Sanction',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_tech_sanction_status',
+            options: ['In progress', 'Ready', 'Submitted', 'Approved'],
+          ),
+          _buildLabeledTextField(
+            label: 'Amount (Rs.)',
+            fieldKey: 'work_tech_sanction_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_tech_sanction'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: 'Amount (Rs.)',
-        fieldKey: 'work_tech_sanction_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_tech_sanction'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Detailed Scope of Work
-      _buildSectionHeader('Detailed Scope of Work'),
-      _buildLabeledTextField(
-        label: 'Description',
-        fieldKey: 'work_detailed_scope',
-        hint: 'Enter detailed scope description',
-        enabled: _isEditing,
-        maxLines: 15,
+      ..._buildSearchableSubsection(
+        'Detailed Scope of Work',
+        [
+          _buildLabeledTextField(
+            label: 'Description',
+            fieldKey: 'work_detailed_scope',
+            hint: 'Enter detailed scope description',
+            enabled: _isEditing,
+            maxLines: 15,
+          ),
+          _buildResponsibilityFields('work_detailed_scope'),
+        ],
       ),
-      _buildResponsibilityFields('work_detailed_scope'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Type of Contract Proposed
-      _buildSectionHeader('Type of Contract Proposed'),
-      _buildDropdownField(
-        label: 'Contract Type',
-        fieldKey: 'work_contract_type',
-        options: ['EPC', 'Item Rate B-2', '% Rate B-1', 'BOT'],
+      ..._buildSearchableSubsection(
+        'Type of Contract Proposed',
+        [
+          _buildDropdownField(
+            label: 'Contract Type',
+            fieldKey: 'work_contract_type',
+            options: ['EPC', 'Item Rate B-2', '% Rate B-1', 'BOT'],
+          ),
+          _buildResponsibilityFields('work_contract_type'),
+        ],
       ),
-      _buildResponsibilityFields('work_contract_type'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // DTP Approval
-      _buildSectionHeader('DTP Approval'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_dtp_approval_status',
-        options: ['Not submitted', 'Submitted', 'In process', 'Approved'],
+      ..._buildSearchableSubsection(
+        'DTP Approval',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_dtp_approval_status',
+            options: ['Not submitted', 'Submitted', 'In process', 'Approved'],
+          ),
+          _buildResponsibilityFields('work_dtp_approval'),
+        ],
       ),
-      _buildResponsibilityFields('work_dtp_approval'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // NIT Invitation
-      _buildSectionHeader('NIT Invitation'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_nit_invitation_status',
-        options: ['Not Ready', 'Ready', 'Published'],
+      ..._buildSearchableSubsection(
+        'NIT Invitation',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_nit_invitation_status',
+            options: ['Not Ready', 'Ready', 'Published'],
+          ),
+          _buildLabeledDateField(
+            label: 'Published Date',
+            fieldKey: 'work_nit_invitation_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_nit_invitation'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Published Date',
-        fieldKey: 'work_nit_invitation_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_nit_invitation'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Uploading of Bid Doc
-      _buildSectionHeader('Uploading of Bid Doc'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_bid_upload_status',
-        options: ['In Progress', 'Uploaded'],
+      ..._buildSearchableSubsection(
+        'Uploading of Bid Doc',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_bid_upload_status',
+            options: ['In Progress', 'Uploaded'],
+          ),
+          _buildLabeledDateField(
+            label: 'Upload Date',
+            fieldKey: 'work_bid_upload_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_bid_upload'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Upload Date',
-        fieldKey: 'work_bid_upload_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_bid_upload'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Pre-Bid Meeting
-      _buildSectionHeader('Pre-Bid Meeting'),
-      _buildLabeledDateField(
-        label: 'Meeting Date',
-        fieldKey: 'work_prebid_meeting_date',
-        hint: 'Select meeting date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Pre-Bid Meeting',
+        [
+          _buildLabeledDateField(
+            label: 'Meeting Date',
+            fieldKey: 'work_prebid_meeting_date',
+            hint: 'Select meeting date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_prebid_meeting'),
+        ],
       ),
-      _buildResponsibilityFields('work_prebid_meeting'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // CSD / Replies to Queries
-      _buildSectionHeader('CSD / Replies to Queries'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_csd_status',
-        options: ['In progress', 'Submitted', 'Approved', 'Uploaded'],
+      ..._buildSearchableSubsection(
+        'CSD / Replies to Queries',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_csd_status',
+            options: ['In progress', 'Submitted', 'Approved', 'Uploaded'],
+          ),
+          _buildLabeledDateField(
+            label: 'Date',
+            fieldKey: 'work_csd_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_csd'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Date',
-        fieldKey: 'work_csd_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_csd'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Bid Submission
-      _buildSectionHeader('Bid Submission'),
-      _buildLabeledDateField(
-        label: 'Submission Date',
-        fieldKey: 'work_bid_submission_date',
-        hint: 'Select submission date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Bid Submission',
+        [
+          _buildLabeledDateField(
+            label: 'Submission Date',
+            fieldKey: 'work_bid_submission_date',
+            hint: 'Select submission date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_bid_submission'),
+        ],
       ),
-      _buildResponsibilityFields('work_bid_submission'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Bid Opening
-      _buildSectionHeader('Bid Opening'),
-      _buildLabeledDateField(
-        label: 'Opening Date',
-        fieldKey: 'work_bid_opening_date',
-        hint: 'Select opening date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Bid Opening',
+        [
+          _buildLabeledDateField(
+            label: 'Opening Date',
+            fieldKey: 'work_bid_opening_date',
+            hint: 'Select opening date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '# Submitted',
+            fieldKey: 'work_bid_opening_count',
+            hint: 'Enter number of bids submitted',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_bid_opening'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '# Submitted',
-        fieldKey: 'work_bid_opening_count',
-        hint: 'Enter number of bids submitted',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_bid_opening'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Financial Bid Opening
-      _buildSectionHeader('Financial Bid Opening'),
-      _buildLabeledDateField(
-        label: 'Opening Date',
-        fieldKey: 'work_fin_bid_opening_date',
-        hint: 'Select opening date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Financial Bid Opening',
+        [
+          _buildLabeledDateField(
+            label: 'Opening Date',
+            fieldKey: 'work_fin_bid_opening_date',
+            hint: 'Select opening date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '# Qualified',
+            fieldKey: 'work_fin_bid_qualified',
+            hint: 'Enter number qualified',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Lowest Bid',
+            fieldKey: 'work_fin_bid_lowest',
+            hint: 'Enter lowest bid',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '% +/-',
+            fieldKey: 'work_fin_bid_percentage',
+            hint: 'Enter percentage variance',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_fin_bid_opening'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '# Qualified',
-        fieldKey: 'work_fin_bid_qualified',
-        hint: 'Enter number qualified',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Lowest Bid',
-        fieldKey: 'work_fin_bid_lowest',
-        hint: 'Enter lowest bid',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '% +/-',
-        fieldKey: 'work_fin_bid_percentage',
-        hint: 'Enter percentage variance',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_fin_bid_opening'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Acceptance of Offer
-      _buildSectionHeader('Acceptance of Offer'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_acceptance_status',
-        options: ['Accepted', 'Rejected'],
+      ..._buildSearchableSubsection(
+        'Acceptance of Offer',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_acceptance_status',
+            options: ['Accepted', 'Rejected'],
+          ),
+          _buildLabeledTextField(
+            label: '% +/-',
+            fieldKey: 'work_acceptance_percentage',
+            hint: 'Enter percentage',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_acceptance'),
+        ],
       ),
-      _buildLabeledTextField(
-        label: '% +/-',
-        fieldKey: 'work_acceptance_percentage',
-        hint: 'Enter percentage',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_acceptance'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Letter of Intent
-      _buildSectionHeader('Letter of Intent'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_loi_status',
-        options: ['Not issued', 'Issued'],
+      ..._buildSearchableSubsection(
+        'Letter of Intent',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_loi_status',
+            options: ['Not issued', 'Issued'],
+          ),
+          _buildLabeledDateField(
+            label: 'Issue Date',
+            fieldKey: 'work_loi_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_loi'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Issue Date',
-        fieldKey: 'work_loi_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_loi'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Letter of Acceptance
-      _buildSectionHeader('Letter of Acceptance'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_loa_status',
-        options: ['Not issued', 'Issued'],
+      ..._buildSearchableSubsection(
+        'Letter of Acceptance',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_loa_status',
+            options: ['Not issued', 'Issued'],
+          ),
+          _buildLabeledDateField(
+            label: 'Issue Date',
+            fieldKey: 'work_loa_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          _buildResponsibilityFields('work_loa'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Issue Date',
-        fieldKey: 'work_loa_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      _buildResponsibilityFields('work_loa'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // PBG Submission
-      _buildSectionHeader('PBG Submission'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_pbg_status',
-        options: ['Not yet', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'PBG Submission',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_pbg_status',
+            options: ['Not yet', 'Submitted'],
+          ),
+          _buildLabeledDateField(
+            label: 'Submission Date',
+            fieldKey: 'work_pbg_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'work_pbg_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Period (months)',
+            fieldKey: 'work_pbg_period',
+            hint: 'Enter period in months',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_pbg'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Submission Date',
-        fieldKey: 'work_pbg_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'work_pbg_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Period (months)',
-        fieldKey: 'work_pbg_period',
-        hint: 'Enter period in months',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_pbg'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Signing of Agreement
-      _buildSectionHeader('Signing of Agreement'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_agreement_status',
-        options: ['Not Signed', 'Signed'],
+      ..._buildSearchableSubsection(
+        'Signing of Agreement',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_agreement_status',
+            options: ['Not Signed', 'Signed'],
+          ),
+          _buildLabeledDateField(
+            label: 'Signing Date',
+            fieldKey: 'work_agreement_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'work_agreement_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_agreement'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Signing Date',
-        fieldKey: 'work_agreement_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'work_agreement_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_agreement'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Work Order / Appointed Date
-      _buildSectionHeader('Work Order / Appointed Date'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'work_order_status',
-        options: ['Not issued', 'Issued'],
+      ..._buildSearchableSubsection(
+        'Work Order / Appointed Date',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'work_order_status',
+            options: ['Not issued', 'Issued'],
+          ),
+          _buildLabeledDateField(
+            label: 'Issue Date',
+            fieldKey: 'work_order_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'work_order_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Period (months)',
+            fieldKey: 'work_order_period',
+            hint: 'Enter period (default: 24 months)',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('work_order'),
+        ],
       ),
-      _buildLabeledDateField(
-        label: 'Issue Date',
-        fieldKey: 'work_order_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'work_order_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Period (months)',
-        fieldKey: 'work_order_period',
-        hint: 'Enter period (default: 24 months)',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('work_order'),
     ];
   }
 
   List<Widget> _buildPMSFields() {
     return [
       // Agreement Amount
-      _buildSectionHeader('Agreement Amount'),
-      _buildLabeledTextField(
-        label: 'Amount (Rs. Lakhs)',
-        fieldKey: 'pms_agreement_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
+      ..._buildSearchableSubsection(
+        'Agreement Amount',
+        [
+          _buildLabeledTextField(
+            label: 'Amount (Rs. Lakhs)',
+            fieldKey: 'pms_agreement_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_agreement'),
+        ],
       ),
-      _buildResponsibilityFields('pms_agreement'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Tender Period
-      _buildSectionHeader('Tender Period'),
-      _buildLabeledTextField(
-        label: 'Period (Months)',
-        fieldKey: 'pms_tender_period',
-        hint: 'Enter period in months',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
+      ..._buildSearchableSubsection(
+        'Tender Period',
+        [
+          _buildLabeledTextField(
+            label: 'Period (Months)',
+            fieldKey: 'pms_tender_period',
+            hint: 'Enter period in months',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_tender_period'),
+        ],
       ),
-      _buildResponsibilityFields('pms_tender_period'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Insurance Submitted
-      _buildSectionHeader('Insurance Submitted'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_insurance_status',
-        options: ['Yes', 'No'],
+      ..._buildSearchableSubsection(
+        'Insurance Submitted',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_insurance_status',
+            options: ['Yes', 'No'],
+          ),
+          const SizedBox(height: 16),
+          _buildRadioGroupField(
+            label: 'Penalty',
+            fieldKey: 'pms_insurance_penalty',
+            options: ['Yes', 'No'],
+          ),
+          _buildResponsibilityFields('pms_insurance'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildRadioGroupField(
-        label: 'Penalty',
-        fieldKey: 'pms_insurance_penalty',
-        options: ['Yes', 'No'],
-      ),
-      _buildResponsibilityFields('pms_insurance'),
 
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
+      // 1st Milestone
+      ..._buildSearchableSubsection(
+        '1st Milestone',
+        [
+          _buildLabeledDateField(
+            label: 'Target Date',
+            fieldKey: 'pms_milestone_1_target_date',
+            hint: 'Select target date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Achieved Date',
+            fieldKey: 'pms_milestone_1_achieved_date',
+            hint: 'Select achieved date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Target Amount',
+            fieldKey: 'pms_milestone_1_target_amt',
+            hint: 'Enter target amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Achieved Amount',
+            fieldKey: 'pms_milestone_1_achieved_amt',
+            hint: 'Enter achieved amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_milestone_1'),
+        ],
+      ),
 
-      // Ist Milestone
-      _buildSectionHeader('1st Milestone'),
-      _buildLabeledDateField(
-        label: 'Target Date',
-        fieldKey: 'pms_milestone_1_target_date',
-        hint: 'Select target date',
-        enabled: _isEditing,
+      // 1st Liquidated Damages
+      ..._buildSearchableSubsection(
+        '1st Liquidated Damages',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_ld_1_applicability',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Rate',
+            fieldKey: 'pms_ld_1_rate',
+            hint: 'Enter rate',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Recovery',
+            fieldKey: 'pms_ld_1_recovery',
+            hint: 'Enter recovery amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_ld_1'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Achieved Date',
-        fieldKey: 'pms_milestone_1_achieved_date',
-        hint: 'Select achieved date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Target Amount',
-        fieldKey: 'pms_milestone_1_target_amt',
-        hint: 'Enter target amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Achieved Amount',
-        fieldKey: 'pms_milestone_1_achieved_amt',
-        hint: 'Enter achieved amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_milestone_1'),
 
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
+      // 2nd Milestone
+      ..._buildSearchableSubsection(
+        '2nd Milestone',
+        [
+          _buildLabeledDateField(
+            label: 'Target Date',
+            fieldKey: 'pms_milestone_2_target_date',
+            hint: 'Select target date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Achieved Date',
+            fieldKey: 'pms_milestone_2_achieved_date',
+            hint: 'Select achieved date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Target Amount',
+            fieldKey: 'pms_milestone_2_target_amt',
+            hint: 'Enter target amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Achieved Amount',
+            fieldKey: 'pms_milestone_2_achieved_amt',
+            hint: 'Enter achieved amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_milestone_2'),
+        ],
+      ),
 
-      // Ist Liquidated Damages
-      _buildSectionHeader('1st Liquidated Damages'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_ld_1_applicability',
-        options: ['Not Applicable', 'Applicable'],
+      // 2nd Liquidated Damages
+      ..._buildSearchableSubsection(
+        '2nd Liquidated Damages',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_ld_2_applicability',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Rate',
+            fieldKey: 'pms_ld_2_rate',
+            hint: 'Enter rate',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Recovery',
+            fieldKey: 'pms_ld_2_recovery',
+            hint: 'Enter recovery amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_ld_2'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Rate',
-        fieldKey: 'pms_ld_1_rate',
-        hint: 'Enter rate',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Recovery',
-        fieldKey: 'pms_ld_1_recovery',
-        hint: 'Enter recovery amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_ld_1'),
 
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
+      // 3rd Milestone
+      ..._buildSearchableSubsection(
+        '3rd Milestone',
+        [
+          _buildLabeledDateField(
+            label: 'Target Date',
+            fieldKey: 'pms_milestone_3_target_date',
+            hint: 'Select target date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Achieved Date',
+            fieldKey: 'pms_milestone_3_achieved_date',
+            hint: 'Select achieved date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Target Amount',
+            fieldKey: 'pms_milestone_3_target_amt',
+            hint: 'Enter target amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Achieved Amount',
+            fieldKey: 'pms_milestone_3_achieved_amt',
+            hint: 'Enter achieved amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_milestone_3'),
+        ],
+      ),
 
-      // IInd Milestone
-      _buildSectionHeader('2nd Milestone'),
-      _buildLabeledDateField(
-        label: 'Target Date',
-        fieldKey: 'pms_milestone_2_target_date',
-        hint: 'Select target date',
-        enabled: _isEditing,
+      // 3rd Liquidated Damages
+      ..._buildSearchableSubsection(
+        '3rd Liquidated Damages',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_ld_3_applicability',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Rate',
+            fieldKey: 'pms_ld_3_rate',
+            hint: 'Enter rate',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Recovery',
+            fieldKey: 'pms_ld_3_recovery',
+            hint: 'Enter recovery amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_ld_3'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Achieved Date',
-        fieldKey: 'pms_milestone_2_achieved_date',
-        hint: 'Select achieved date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Target Amount',
-        fieldKey: 'pms_milestone_2_target_amt',
-        hint: 'Enter target amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Achieved Amount',
-        fieldKey: 'pms_milestone_2_achieved_amt',
-        hint: 'Enter achieved amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_milestone_2'),
 
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
+      // 4th Milestone
+      ..._buildSearchableSubsection(
+        '4th Milestone',
+        [
+          _buildLabeledDateField(
+            label: 'Target Date',
+            fieldKey: 'pms_milestone_4_target_date',
+            hint: 'Select target date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Achieved Date',
+            fieldKey: 'pms_milestone_4_achieved_date',
+            hint: 'Select achieved date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Target Amount',
+            fieldKey: 'pms_milestone_4_target_amt',
+            hint: 'Enter target amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Achieved Amount',
+            fieldKey: 'pms_milestone_4_achieved_amt',
+            hint: 'Enter achieved amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_milestone_4'),
+        ],
+      ),
 
-      // IInd Liquidated Damages
-      _buildSectionHeader('2nd Liquidated Damages'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_ld_2_applicability',
-        options: ['Not Applicable', 'Applicable'],
+      // 4th Liquidated Damages
+      ..._buildSearchableSubsection(
+        '4th Liquidated Damages',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_ld_4_applicability',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Rate',
+            fieldKey: 'pms_ld_4_rate',
+            hint: 'Enter rate',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Recovery',
+            fieldKey: 'pms_ld_4_recovery',
+            hint: 'Enter recovery amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_ld_4'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Rate',
-        fieldKey: 'pms_ld_2_rate',
-        hint: 'Enter rate',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Recovery',
-        fieldKey: 'pms_ld_2_recovery',
-        hint: 'Enter recovery amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_ld_2'),
 
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-
-      // IIIrd Milestone
-      _buildSectionHeader('3rd Milestone'),
-      _buildLabeledDateField(
-        label: 'Target Date',
-        fieldKey: 'pms_milestone_3_target_date',
-        hint: 'Select target date',
-        enabled: _isEditing,
+      // 5th Milestone
+      ..._buildSearchableSubsection(
+        '5th Milestone',
+        [
+          _buildLabeledDateField(
+            label: 'Target Date',
+            fieldKey: 'pms_milestone_5_target_date',
+            hint: 'Select target date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Achieved Date',
+            fieldKey: 'pms_milestone_5_achieved_date',
+            hint: 'Select achieved date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Target Amount',
+            fieldKey: 'pms_milestone_5_target_amt',
+            hint: 'Enter target amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Achieved Amount',
+            fieldKey: 'pms_milestone_5_achieved_amt',
+            hint: 'Enter achieved amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_milestone_5'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Achieved Date',
-        fieldKey: 'pms_milestone_3_achieved_date',
-        hint: 'Select achieved date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Target Amount',
-        fieldKey: 'pms_milestone_3_target_amt',
-        hint: 'Enter target amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Achieved Amount',
-        fieldKey: 'pms_milestone_3_achieved_amt',
-        hint: 'Enter achieved amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_milestone_3'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-
-      // IIIrd Liquidated Damages
-      _buildSectionHeader('3rd Liquidated Damages'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_ld_3_applicability',
-        options: ['Not Applicable', 'Applicable'],
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Rate',
-        fieldKey: 'pms_ld_3_rate',
-        hint: 'Enter rate',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Recovery',
-        fieldKey: 'pms_ld_3_recovery',
-        hint: 'Enter recovery amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_ld_3'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-
-      // IVth Milestone
-      _buildSectionHeader('4th Milestone'),
-      _buildLabeledDateField(
-        label: 'Target Date',
-        fieldKey: 'pms_milestone_4_target_date',
-        hint: 'Select target date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Achieved Date',
-        fieldKey: 'pms_milestone_4_achieved_date',
-        hint: 'Select achieved date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Target Amount',
-        fieldKey: 'pms_milestone_4_target_amt',
-        hint: 'Enter target amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Achieved Amount',
-        fieldKey: 'pms_milestone_4_achieved_amt',
-        hint: 'Enter achieved amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_milestone_4'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-
-      // IVth Liquidated Damages
-      _buildSectionHeader('4th Liquidated Damages'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_ld_4_applicability',
-        options: ['Not Applicable', 'Applicable'],
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Rate',
-        fieldKey: 'pms_ld_4_rate',
-        hint: 'Enter rate',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Recovery',
-        fieldKey: 'pms_ld_4_recovery',
-        hint: 'Enter recovery amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_ld_4'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
-
-      // Vth Milestone
-      _buildSectionHeader('5th Milestone'),
-      _buildLabeledDateField(
-        label: 'Target Date',
-        fieldKey: 'pms_milestone_5_target_date',
-        hint: 'Select target date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Achieved Date',
-        fieldKey: 'pms_milestone_5_achieved_date',
-        hint: 'Select achieved date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Target Amount',
-        fieldKey: 'pms_milestone_5_target_amt',
-        hint: 'Enter target amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Achieved Amount',
-        fieldKey: 'pms_milestone_5_achieved_amt',
-        hint: 'Enter achieved amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_milestone_5'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Final Liquidated Damages
-      _buildSectionHeader('Final Liquidated Damages'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_ld_final_applicability',
-        options: ['Not Applicable', 'Applicable'],
+      ..._buildSearchableSubsection(
+        'Final Liquidated Damages',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_ld_final_applicability',
+            options: ['Not Applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Rate',
+            fieldKey: 'pms_ld_final_rate',
+            hint: 'Enter rate',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Recovery',
+            fieldKey: 'pms_ld_final_recovery',
+            hint: 'Enter recovery amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_ld_final'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Rate',
-        fieldKey: 'pms_ld_final_rate',
-        hint: 'Enter rate',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Recovery',
-        fieldKey: 'pms_ld_final_recovery',
-        hint: 'Enter recovery amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_ld_final'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Change of Scope Order
-      _buildSectionHeader('Change of Scope Order'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_cos_status',
-        options: ['Not Applicable', 'Issued'],
+      ..._buildSearchableSubsection(
+        'Change of Scope Order',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_cos_status',
+            options: ['Not Applicable', 'Issued'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Date',
+            fieldKey: 'pms_cos_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'pms_cos_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Scope',
+            fieldKey: 'pms_cos_scope',
+            hint: 'Enter scope description',
+            enabled: _isEditing,
+            maxLines: 3,
+          ),
+          _buildResponsibilityFields('pms_cos'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Date',
-        fieldKey: 'pms_cos_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'pms_cos_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Scope',
-        fieldKey: 'pms_cos_scope',
-        hint: 'Enter scope description',
-        enabled: _isEditing,
-        maxLines: 3,
-      ),
-      _buildResponsibilityFields('pms_cos'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Extension of Time
-      _buildSectionHeader('Extension of Time'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_eot_status',
-        options: ['Not Applicable', 'Applicable', 'Approved'],
+      ..._buildSearchableSubsection(
+        'Extension of Time',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_eot_status',
+            options: ['Not Applicable', 'Applicable', 'Approved'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Period',
+            fieldKey: 'pms_eot_period',
+            hint: 'Enter period',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_eot'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Period',
-        fieldKey: 'pms_eot_period',
-        hint: 'Enter period',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_eot'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Cumulative Expenditure
-      _buildSectionHeader('Cumulative Expenditure'),
-      _buildLabeledTextField(
-        label: 'Amount (Rs. Lakhs)',
-        fieldKey: 'pms_cum_exp_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
+      ..._buildSearchableSubsection(
+        'Cumulative Expenditure',
+        [
+          _buildLabeledTextField(
+            label: 'Amount (Rs. Lakhs)',
+            fieldKey: 'pms_cum_exp_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '% of Agreement Amount',
+            fieldKey: 'pms_cum_exp_percentage',
+            hint: 'Enter percentage',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_cum_exp'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '% of Agreement Amount',
-        fieldKey: 'pms_cum_exp_percentage',
-        hint: 'Enter percentage',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_cum_exp'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Renewal PBG
-      _buildSectionHeader('Renewal PBG'),
-      _buildLabeledDateField(
-        label: 'Date Due',
-        fieldKey: 'pms_renewal_pbg_date',
-        hint: 'Select due date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Renewal PBG',
+        [
+          _buildLabeledDateField(
+            label: 'Date Due',
+            fieldKey: 'pms_renewal_pbg_date',
+            hint: 'Select due date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_renewal_pbg_status',
+            options: ['Renewed', 'Jumped', 'Penalty'],
+          ),
+          _buildResponsibilityFields('pms_renewal_pbg'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_renewal_pbg_status',
-        options: ['Renewed', 'Jumped', 'Penalty'],
-      ),
-      _buildResponsibilityFields('pms_renewal_pbg'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Renewal of Insurance
-      _buildSectionHeader('Renewal of Insurance'),
-      _buildLabeledDateField(
-        label: 'Date Due',
-        fieldKey: 'pms_renewal_insurance_date',
-        hint: 'Select due date',
-        enabled: _isEditing,
+      ..._buildSearchableSubsection(
+        'Renewal of Insurance',
+        [
+          _buildLabeledDateField(
+            label: 'Date Due',
+            fieldKey: 'pms_renewal_insurance_date',
+            hint: 'Select due date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_renewal_insurance_status',
+            options: ['Renewed', 'Jumped', 'Penalty'],
+          ),
+          _buildResponsibilityFields('pms_renewal_insurance'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_renewal_insurance_status',
-        options: ['Renewed', 'Jumped', 'Penalty'],
-      ),
-      _buildResponsibilityFields('pms_renewal_insurance'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Revised Estimate
-      _buildSectionHeader('Revised Estimate'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_revised_estimate_status',
-        options: [
-          'Not Applicable',
-          'Applicable',
-          'In progress',
-          'Submitted',
-          'Approved',
+      ..._buildSearchableSubsection(
+        'Revised Estimate',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_revised_estimate_status',
+            options: [
+              'Not Applicable',
+              'Applicable',
+              'In progress',
+              'Submitted',
+              'Approved',
+            ],
+          ),
+          _buildResponsibilityFields('pms_revised_estimate'),
         ],
       ),
-      _buildResponsibilityFields('pms_revised_estimate'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Revised AA
-      _buildSectionHeader('Revised AA'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_revised_aa_status',
-        options: [
-          'Not Applicable',
-          'Submitted',
-          'In process',
-          'Approved',
-          'Rejected',
+      ..._buildSearchableSubsection(
+        'Revised AA',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_revised_aa_status',
+            options: [
+              'Not Applicable',
+              'Submitted',
+              'In process',
+              'Approved',
+              'Rejected',
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'pms_revised_aa_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '% of Original AA',
+            fieldKey: 'pms_revised_aa_percentage',
+            hint: 'Enter percentage',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_revised_aa'),
         ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'pms_revised_aa_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '% of Original AA',
-        fieldKey: 'pms_revised_aa_percentage',
-        hint: 'Enter percentage',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_revised_aa'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Final Bill & Expenditure
-      _buildSectionHeader('Final Bill & Expenditure'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_final_bill_status',
-        options: ['Not Due', 'Submitted'],
+      ..._buildSearchableSubsection(
+        'Final Bill & Expenditure',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_final_bill_status',
+            options: ['Not Due', 'Submitted'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledDateField(
+            label: 'Date',
+            fieldKey: 'pms_final_bill_date',
+            hint: 'Select date',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Amount',
+            fieldKey: 'pms_final_bill_amount',
+            hint: 'Enter amount',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '% of Agreement Amount',
+            fieldKey: 'pms_final_bill_percentage',
+            hint: 'Enter percentage',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_final_bill'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledDateField(
-        label: 'Date',
-        fieldKey: 'pms_final_bill_date',
-        hint: 'Select date',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Amount',
-        fieldKey: 'pms_final_bill_amount',
-        hint: 'Enter amount',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '% of Agreement Amount',
-        fieldKey: 'pms_final_bill_percentage',
-        hint: 'Enter percentage',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_final_bill'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // LAQ/LCQ
-      _buildSectionHeader('LAQ / LCQ'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_laq_lcq_status',
-        options: ['Not Raised', 'Raised'],
+      ..._buildSearchableSubsection(
+        'LAQ / LCQ',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_laq_lcq_status',
+            options: ['Not Raised', 'Raised'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Action Proposed',
+            fieldKey: 'pms_laq_lcq_action_proposed',
+            hint: 'Enter action proposed',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Action Description',
+            fieldKey: 'pms_laq_lcq_action_description',
+            hint: 'Enter action description',
+            enabled: _isEditing,
+            maxLines: 3,
+          ),
+          _buildResponsibilityFields('pms_laq_lcq'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Action Proposed',
-        fieldKey: 'pms_laq_lcq_action_proposed',
-        hint: 'Enter action proposed',
-        enabled: _isEditing,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Action Description',
-        fieldKey: 'pms_laq_lcq_action_description',
-        hint: 'Enter action description',
-        enabled: _isEditing,
-        maxLines: 3,
-      ),
-      _buildResponsibilityFields('pms_laq_lcq'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Audit Para Replies
-      _buildSectionHeader('Audit Para Replies'),
-      _buildRadioGroupField(
-        label: 'Applicability',
-        fieldKey: 'pms_audit_para_applicability',
-        options: ['Not applicable', 'Applicable'],
+      ..._buildSearchableSubsection(
+        'Audit Para Replies',
+        [
+          _buildRadioGroupField(
+            label: 'Applicability',
+            fieldKey: 'pms_audit_para_applicability',
+            options: ['Not applicable', 'Applicable'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: '# of Points',
+            fieldKey: 'pms_audit_para_points_count',
+            hint: 'Enter number of points',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Reply Given #',
+            fieldKey: 'pms_audit_para_reply_given',
+            hint: 'Enter number of replies given',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Reply Pending #',
+            fieldKey: 'pms_audit_para_reply_pending',
+            hint: 'Enter number of replies pending',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'DP #',
+            fieldKey: 'pms_audit_para_dp_count',
+            hint: 'Enter DP count',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Dropped #',
+            fieldKey: 'pms_audit_para_dropped_count',
+            hint: 'Enter dropped count',
+            enabled: _isEditing,
+            keyboardType: TextInputType.number,
+          ),
+          _buildResponsibilityFields('pms_audit_para'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: '# of Points',
-        fieldKey: 'pms_audit_para_points_count',
-        hint: 'Enter number of points',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Reply Given #',
-        fieldKey: 'pms_audit_para_reply_given',
-        hint: 'Enter number of replies given',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Reply Pending #',
-        fieldKey: 'pms_audit_para_reply_pending',
-        hint: 'Enter number of replies pending',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'DP #',
-        fieldKey: 'pms_audit_para_dp_count',
-        hint: 'Enter DP count',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Dropped #',
-        fieldKey: 'pms_audit_para_dropped_count',
-        hint: 'Enter dropped count',
-        enabled: _isEditing,
-        keyboardType: TextInputType.number,
-      ),
-      _buildResponsibilityFields('pms_audit_para'),
-
-      const SizedBox(height: 24),
-      const Divider(),
-      const SizedBox(height: 16),
 
       // Technical Audit / Reports
-      _buildSectionHeader('Technical Audit / Reports'),
-      _buildRadioGroupField(
-        label: 'Status',
-        fieldKey: 'pms_tech_audit_status',
-        options: ['Not done', 'Done', 'Report issued', 'No Action required'],
+      ..._buildSearchableSubsection(
+        'Technical Audit / Reports',
+        [
+          _buildRadioGroupField(
+            label: 'Status',
+            fieldKey: 'pms_tech_audit_status',
+            options: ['Not done', 'Done', 'Report issued', 'No Action required'],
+          ),
+          const SizedBox(height: 16),
+          _buildLabeledTextField(
+            label: 'Action Description',
+            fieldKey: 'pms_tech_audit_action_description',
+            hint: 'Enter action description',
+            enabled: _isEditing,
+            maxLines: 3,
+          ),
+          _buildResponsibilityFields('pms_tech_audit'),
+        ],
       ),
-      const SizedBox(height: 16),
-      _buildLabeledTextField(
-        label: 'Action Description',
-        fieldKey: 'pms_tech_audit_action_description',
-        hint: 'Enter action description',
-        enabled: _isEditing,
-        maxLines: 3,
-      ),
-      _buildResponsibilityFields('pms_tech_audit'),
     ];
   }
 
