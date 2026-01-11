@@ -8,7 +8,7 @@ import '../../data/models/category.dart';
 import '../providers/project_provider.dart';
 import '../providers/review_providers.dart';
 import '../widgets/dialogs/create_project_dialog.dart';
-import 'project_detail_screen.dart';
+import 'new_project_detail_screen.dart';
 import 'critical_subsections_screen.dart';
 
 /// Projects Screen - Shows projects within a selected category
@@ -404,7 +404,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) => ProjectDetailScreen(
+                                              builder: (context) => NewProjectDetailScreen(
                                                 project: project,
                                               ),
                                             ),
