@@ -14,6 +14,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Text field controllers Map - tracks all text inputs
+  final Map<String, TextEditingController> _textControllers = {};
+  final Map<String, String> _initialTextValues = {};
+
   // Form state variables
   String _aaStatus = 'awaited'; // awaited, accorded
   String _dprStatus = 'not_started'; // not_started, in_progress, submitted, approved
@@ -55,10 +59,624 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   // EMD verification for Bid Submission
   bool _emdVerificationDone = false;
 
+  // Initial state tracking for change detection
+  late Map<String, dynamic> _initialState;
+
+  @override
+  void initState() {
+    super.initState();
+    _captureInitialState();
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    // Dispose all text field controllers
+    for (var controller in _textControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  /// Gets or creates a TextEditingController for a given field
+  TextEditingController _getController(String fieldKey) {
+    if (!_textControllers.containsKey(fieldKey)) {
+      _textControllers[fieldKey] = TextEditingController();
+      // Add listener to trigger setState when text changes
+      _textControllers[fieldKey]!.addListener(() {
+        setState(() {}); // Trigger rebuild to show/hide submit button
+      });
+    }
+    return _textControllers[fieldKey]!;
+  }
+
+  /// Captures the initial state of all form fields
+  void _captureInitialState() {
+    _initialState = {
+      'aaStatus': _aaStatus,
+      'dprStatus': _dprStatus,
+      'boqStatus': _boqStatus,
+      'schedulesStatus': _schedulesStatus,
+      'drawingsStatus': _drawingsStatus,
+      'bidDocumentsStatus': _bidDocumentsStatus,
+      'envApplicability': _envApplicability,
+      'envProposalStatus': _envProposalStatus,
+      'laApplicability': _laApplicability,
+      'laProposalStatus': _laProposalStatus,
+      'utilityShiftingApplicability': _utilityShiftingApplicability,
+      'utilityShiftingProposalStatus': _utilityShiftingProposalStatus,
+      'tsStatus': _tsStatus,
+      'tsAwaitedStatus': _tsAwaitedStatus,
+      'nitStatus': _nitStatus,
+      'nitIssuedInputMethod': _nitIssuedInputMethod,
+      'csdStatus': _csdStatus,
+      'technicalEvaluationStatus': _technicalEvaluationStatus,
+      'financialBidOfferType': _financialBidOfferType,
+      'bidAcceptanceStatus': _bidAcceptanceStatus,
+      'loaStatus': _loaStatus,
+      'pbgStatus': _pbgStatus,
+      'workOrderStatus': _workOrderStatus,
+      'ldApplicability': _ldApplicability,
+      'eotApplicability': _eotApplicability,
+      'cosApplicability': _cosApplicability,
+      'cosStatus': _cosStatus,
+      'auditParaApplicability': _auditParaApplicability,
+      'laqApplicability': _laqApplicability,
+      'technicalAuditStatus': _technicalAuditStatus,
+      'revAaStatus': _revAaStatus,
+      'revAaProgressStatus': _revAaProgressStatus,
+      'supplementaryAgreementApplicability': _supplementaryAgreementApplicability,
+      'eotOptions': Set<String>.from(_eotOptions),
+      'emdVerificationDone': _emdVerificationDone,
+    };
+
+    // Capture initial text field values
+    _initialTextValues.clear();
+    for (var entry in _textControllers.entries) {
+      _initialTextValues[entry.key] = entry.value.text;
+    }
+  }
+
+  /// Checks if any form field has been modified from its initial value
+  bool _hasChanges() {
+    // Check radio buttons, checkboxes, and dropdowns
+    if (_aaStatus != _initialState['aaStatus'] ||
+        _dprStatus != _initialState['dprStatus'] ||
+        _boqStatus != _initialState['boqStatus'] ||
+        _schedulesStatus != _initialState['schedulesStatus'] ||
+        _drawingsStatus != _initialState['drawingsStatus'] ||
+        _bidDocumentsStatus != _initialState['bidDocumentsStatus'] ||
+        _envApplicability != _initialState['envApplicability'] ||
+        _envProposalStatus != _initialState['envProposalStatus'] ||
+        _laApplicability != _initialState['laApplicability'] ||
+        _laProposalStatus != _initialState['laProposalStatus'] ||
+        _utilityShiftingApplicability != _initialState['utilityShiftingApplicability'] ||
+        _utilityShiftingProposalStatus != _initialState['utilityShiftingProposalStatus'] ||
+        _tsStatus != _initialState['tsStatus'] ||
+        _tsAwaitedStatus != _initialState['tsAwaitedStatus'] ||
+        _nitStatus != _initialState['nitStatus'] ||
+        _nitIssuedInputMethod != _initialState['nitIssuedInputMethod'] ||
+        _csdStatus != _initialState['csdStatus'] ||
+        _technicalEvaluationStatus != _initialState['technicalEvaluationStatus'] ||
+        _financialBidOfferType != _initialState['financialBidOfferType'] ||
+        _bidAcceptanceStatus != _initialState['bidAcceptanceStatus'] ||
+        _loaStatus != _initialState['loaStatus'] ||
+        _pbgStatus != _initialState['pbgStatus'] ||
+        _workOrderStatus != _initialState['workOrderStatus'] ||
+        _ldApplicability != _initialState['ldApplicability'] ||
+        _eotApplicability != _initialState['eotApplicability'] ||
+        _cosApplicability != _initialState['cosApplicability'] ||
+        _cosStatus != _initialState['cosStatus'] ||
+        _auditParaApplicability != _initialState['auditParaApplicability'] ||
+        _laqApplicability != _initialState['laqApplicability'] ||
+        _technicalAuditStatus != _initialState['technicalAuditStatus'] ||
+        _revAaStatus != _initialState['revAaStatus'] ||
+        _revAaProgressStatus != _initialState['revAaProgressStatus'] ||
+        _supplementaryAgreementApplicability != _initialState['supplementaryAgreementApplicability'] ||
+        !_setsEqual(_eotOptions, _initialState['eotOptions']) ||
+        _emdVerificationDone != _initialState['emdVerificationDone']) {
+      return true;
+    }
+
+    // Check text field changes
+    for (var entry in _textControllers.entries) {
+      final initialValue = _initialTextValues[entry.key] ?? '';
+      final currentValue = entry.value.text;
+      if (initialValue != currentValue) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Helper method to compare two sets for equality
+  bool _setsEqual(Set<String> set1, Set<String> set2) {
+    if (set1.length != set2.length) return false;
+    return set1.containsAll(set2);
+  }
+
+  /// Gets a list of all changes made to the form
+  List<Map<String, String>> _getChanges() {
+    final changes = <Map<String, String>>[];
+
+    if (_aaStatus != _initialState['aaStatus']) {
+      changes.add({
+        'field': 'AA Status',
+        'from': _formatFieldValue(_initialState['aaStatus']),
+        'to': _formatFieldValue(_aaStatus),
+      });
+    }
+
+    if (_dprStatus != _initialState['dprStatus']) {
+      changes.add({
+        'field': 'DPR Status',
+        'from': _formatFieldValue(_initialState['dprStatus']),
+        'to': _formatFieldValue(_dprStatus),
+      });
+    }
+
+    if (_boqStatus != _initialState['boqStatus']) {
+      changes.add({
+        'field': 'BOQ Status',
+        'from': _formatFieldValue(_initialState['boqStatus']),
+        'to': _formatFieldValue(_boqStatus),
+      });
+    }
+
+    if (_schedulesStatus != _initialState['schedulesStatus']) {
+      changes.add({
+        'field': 'Schedules Status',
+        'from': _formatFieldValue(_initialState['schedulesStatus']),
+        'to': _formatFieldValue(_schedulesStatus),
+      });
+    }
+
+    if (_drawingsStatus != _initialState['drawingsStatus']) {
+      changes.add({
+        'field': 'Drawings Status',
+        'from': _formatFieldValue(_initialState['drawingsStatus']),
+        'to': _formatFieldValue(_drawingsStatus),
+      });
+    }
+
+    if (_bidDocumentsStatus != _initialState['bidDocumentsStatus']) {
+      changes.add({
+        'field': 'Bid Documents Status',
+        'from': _formatFieldValue(_initialState['bidDocumentsStatus']),
+        'to': _formatFieldValue(_bidDocumentsStatus),
+      });
+    }
+
+    if (_envApplicability != _initialState['envApplicability']) {
+      changes.add({
+        'field': 'ENV Applicability',
+        'from': _formatFieldValue(_initialState['envApplicability']),
+        'to': _formatFieldValue(_envApplicability),
+      });
+    }
+
+    if (_envProposalStatus != _initialState['envProposalStatus']) {
+      changes.add({
+        'field': 'ENV Proposal Status',
+        'from': _formatFieldValue(_initialState['envProposalStatus']),
+        'to': _formatFieldValue(_envProposalStatus),
+      });
+    }
+
+    if (_laApplicability != _initialState['laApplicability']) {
+      changes.add({
+        'field': 'LA Applicability',
+        'from': _formatFieldValue(_initialState['laApplicability']),
+        'to': _formatFieldValue(_laApplicability),
+      });
+    }
+
+    if (_laProposalStatus != _initialState['laProposalStatus']) {
+      changes.add({
+        'field': 'LA Proposal Status',
+        'from': _formatFieldValue(_initialState['laProposalStatus']),
+        'to': _formatFieldValue(_laProposalStatus),
+      });
+    }
+
+    if (_utilityShiftingApplicability != _initialState['utilityShiftingApplicability']) {
+      changes.add({
+        'field': 'Utility Shifting Applicability',
+        'from': _formatFieldValue(_initialState['utilityShiftingApplicability']),
+        'to': _formatFieldValue(_utilityShiftingApplicability),
+      });
+    }
+
+    if (_utilityShiftingProposalStatus != _initialState['utilityShiftingProposalStatus']) {
+      changes.add({
+        'field': 'Utility Shifting Proposal Status',
+        'from': _formatFieldValue(_initialState['utilityShiftingProposalStatus']),
+        'to': _formatFieldValue(_utilityShiftingProposalStatus),
+      });
+    }
+
+    if (_tsStatus != _initialState['tsStatus']) {
+      changes.add({
+        'field': 'TS Status',
+        'from': _formatFieldValue(_initialState['tsStatus']),
+        'to': _formatFieldValue(_tsStatus),
+      });
+    }
+
+    if (_tsAwaitedStatus != _initialState['tsAwaitedStatus']) {
+      changes.add({
+        'field': 'TS Awaited Status',
+        'from': _formatFieldValue(_initialState['tsAwaitedStatus']),
+        'to': _formatFieldValue(_tsAwaitedStatus),
+      });
+    }
+
+    if (_nitStatus != _initialState['nitStatus']) {
+      changes.add({
+        'field': 'NIT Status',
+        'from': _formatFieldValue(_initialState['nitStatus']),
+        'to': _formatFieldValue(_nitStatus),
+      });
+    }
+
+    if (_nitIssuedInputMethod != _initialState['nitIssuedInputMethod']) {
+      changes.add({
+        'field': 'NIT Input Method',
+        'from': _formatFieldValue(_initialState['nitIssuedInputMethod']),
+        'to': _formatFieldValue(_nitIssuedInputMethod),
+      });
+    }
+
+    if (_csdStatus != _initialState['csdStatus']) {
+      changes.add({
+        'field': 'CSD Status',
+        'from': _formatFieldValue(_initialState['csdStatus']),
+        'to': _formatFieldValue(_csdStatus),
+      });
+    }
+
+    if (_technicalEvaluationStatus != _initialState['technicalEvaluationStatus']) {
+      changes.add({
+        'field': 'Technical Evaluation Status',
+        'from': _formatFieldValue(_initialState['technicalEvaluationStatus']),
+        'to': _formatFieldValue(_technicalEvaluationStatus),
+      });
+    }
+
+    if (_financialBidOfferType != _initialState['financialBidOfferType']) {
+      changes.add({
+        'field': 'Financial Bid Offer Type',
+        'from': _formatFieldValue(_initialState['financialBidOfferType']),
+        'to': _formatFieldValue(_financialBidOfferType),
+      });
+    }
+
+    if (_bidAcceptanceStatus != _initialState['bidAcceptanceStatus']) {
+      changes.add({
+        'field': 'Bid Acceptance Status',
+        'from': _formatFieldValue(_initialState['bidAcceptanceStatus']),
+        'to': _formatFieldValue(_bidAcceptanceStatus),
+      });
+    }
+
+    if (_loaStatus != _initialState['loaStatus']) {
+      changes.add({
+        'field': 'LOA Status',
+        'from': _formatFieldValue(_initialState['loaStatus']),
+        'to': _formatFieldValue(_loaStatus),
+      });
+    }
+
+    if (_pbgStatus != _initialState['pbgStatus']) {
+      changes.add({
+        'field': 'PBG Status',
+        'from': _formatFieldValue(_initialState['pbgStatus']),
+        'to': _formatFieldValue(_pbgStatus),
+      });
+    }
+
+    if (_workOrderStatus != _initialState['workOrderStatus']) {
+      changes.add({
+        'field': 'Work Order Status',
+        'from': _formatFieldValue(_initialState['workOrderStatus']),
+        'to': _formatFieldValue(_workOrderStatus),
+      });
+    }
+
+    if (_ldApplicability != _initialState['ldApplicability']) {
+      changes.add({
+        'field': 'LD Applicability',
+        'from': _formatFieldValue(_initialState['ldApplicability']),
+        'to': _formatFieldValue(_ldApplicability),
+      });
+    }
+
+    if (_eotApplicability != _initialState['eotApplicability']) {
+      changes.add({
+        'field': 'EOT Applicability',
+        'from': _formatFieldValue(_initialState['eotApplicability']),
+        'to': _formatFieldValue(_eotApplicability),
+      });
+    }
+
+    if (_cosApplicability != _initialState['cosApplicability']) {
+      changes.add({
+        'field': 'COS Applicability',
+        'from': _formatFieldValue(_initialState['cosApplicability']),
+        'to': _formatFieldValue(_cosApplicability),
+      });
+    }
+
+    if (_cosStatus != _initialState['cosStatus']) {
+      changes.add({
+        'field': 'COS Status',
+        'from': _formatFieldValue(_initialState['cosStatus']),
+        'to': _formatFieldValue(_cosStatus),
+      });
+    }
+
+    if (_auditParaApplicability != _initialState['auditParaApplicability']) {
+      changes.add({
+        'field': 'Audit Para Applicability',
+        'from': _formatFieldValue(_initialState['auditParaApplicability']),
+        'to': _formatFieldValue(_auditParaApplicability),
+      });
+    }
+
+    if (_laqApplicability != _initialState['laqApplicability']) {
+      changes.add({
+        'field': 'LAQ Applicability',
+        'from': _formatFieldValue(_initialState['laqApplicability']),
+        'to': _formatFieldValue(_laqApplicability),
+      });
+    }
+
+    if (_technicalAuditStatus != _initialState['technicalAuditStatus']) {
+      changes.add({
+        'field': 'Technical Audit Status',
+        'from': _formatFieldValue(_initialState['technicalAuditStatus']),
+        'to': _formatFieldValue(_technicalAuditStatus),
+      });
+    }
+
+    if (_revAaStatus != _initialState['revAaStatus']) {
+      changes.add({
+        'field': 'Rev AA Status',
+        'from': _formatFieldValue(_initialState['revAaStatus']),
+        'to': _formatFieldValue(_revAaStatus),
+      });
+    }
+
+    if (_revAaProgressStatus != _initialState['revAaProgressStatus']) {
+      changes.add({
+        'field': 'Rev AA Progress Status',
+        'from': _formatFieldValue(_initialState['revAaProgressStatus']),
+        'to': _formatFieldValue(_revAaProgressStatus),
+      });
+    }
+
+    if (_supplementaryAgreementApplicability != _initialState['supplementaryAgreementApplicability']) {
+      changes.add({
+        'field': 'Supplementary Agreement Applicability',
+        'from': _formatFieldValue(_initialState['supplementaryAgreementApplicability']),
+        'to': _formatFieldValue(_supplementaryAgreementApplicability),
+      });
+    }
+
+    if (!_setsEqual(_eotOptions, _initialState['eotOptions'])) {
+      changes.add({
+        'field': 'EOT Options',
+        'from': _initialState['eotOptions'].isEmpty
+            ? 'None'
+            : _initialState['eotOptions'].join(', '),
+        'to': _eotOptions.isEmpty ? 'None' : _eotOptions.join(', '),
+      });
+    }
+
+    if (_emdVerificationDone != _initialState['emdVerificationDone']) {
+      changes.add({
+        'field': 'EMD Verification Done',
+        'from': _initialState['emdVerificationDone'] ? 'Yes' : 'No',
+        'to': _emdVerificationDone ? 'Yes' : 'No',
+      });
+    }
+
+    // Check text field changes
+    for (var entry in _textControllers.entries) {
+      final initialValue = _initialTextValues[entry.key] ?? '';
+      final currentValue = entry.value.text;
+      if (initialValue != currentValue) {
+        changes.add({
+          'field': entry.key,
+          'from': initialValue.isEmpty ? '(Empty)' : initialValue,
+          'to': currentValue.isEmpty ? '(Empty)' : currentValue,
+        });
+      }
+    }
+
+    return changes;
+  }
+
+  /// Formats field values for display
+  String _formatFieldValue(dynamic value) {
+    if (value is String) {
+      return value.replaceAll('_', ' ').split(' ').map((word) {
+        if (word.isEmpty) return '';
+        return word[0].toUpperCase() + word.substring(1);
+      }).join(' ');
+    }
+    return value.toString();
+  }
+
+  /// Shows the confirmation dialog with all changes
+  void _showChangesDialog() {
+    final changes = _getChanges();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Text(
+          'Confirm Changes',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You have made ${changes.length} change${changes.length > 1 ? 's' : ''} to the form:',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: changes.map((change) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              change['field']!,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'From:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        change['from']!,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.error,
+                                          decoration: TextDecoration.lineThrough,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'To:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        change['to']!,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.success,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _submitChanges();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('Proceed'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Handles the submission of changes
+  void _submitChanges() {
+    // TODO: Implement actual submission logic
+    // For now, just update the initial state to the current state
+    _captureInitialState();
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Changes submitted successfully!'),
+        backgroundColor: AppColors.success,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    setState(() {}); // Refresh to hide submit button
   }
 
   bool _matchesSearch(String title) {
@@ -944,6 +1562,8 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final hasChanges = _hasChanges();
+
     return Container(
       color: AppColors.background,
       child: Column(
@@ -1022,6 +1642,27 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
                     ),
                   ),
                 ),
+                // Submit button - only visible when there are changes
+                if (hasChanges) ...[
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _showChangesDialog,
+                    icon: const Icon(Icons.save, size: 18),
+                    label: const Text('Submit'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1075,6 +1716,9 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     int maxLines = 1,
     TextInputType? keyboardType,
   }) {
+    // Get or create controller for this field
+    final controller = _getController(label);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1088,6 +1732,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         const SizedBox(height: 6),
         TextField(
+          controller: controller,
           maxLines: maxLines,
           keyboardType: keyboardType,
           decoration: InputDecoration(
@@ -1118,6 +1763,9 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   }
 
   Widget _buildDateField({required String label}) {
+    // Get or create controller for this field
+    final controller = _getController(label);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1131,6 +1779,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         const SizedBox(height: 6),
         TextField(
+          controller: controller,
           readOnly: true,
           decoration: InputDecoration(
             border: OutlineInputBorder(
@@ -1162,7 +1811,9 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
               firstDate: DateTime(2000),
               lastDate: DateTime(2100),
             );
-            // TODO: Handle selected date
+            if (date != null) {
+              controller.text = '${date.day}/${date.month}/${date.year}';
+            }
           },
         ),
       ],
