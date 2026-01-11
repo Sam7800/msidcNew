@@ -18,9 +18,9 @@ import '../../data/models/subsection_field_mapping.dart';
 ///
 /// Shows all subsections marked as critical across projects
 /// Accessible from:
-/// 1. Categories Screen - Shows critical items for ALL projects
-/// 2. Projects Screen - Shows critical items for projects in a specific category
-/// 3. Project Header - Shows critical items for a specific project
+/// 1. Categories Screen - Shows critical activities for ALL projects
+/// 2. Projects Screen - Shows critical activities for projects in a specific category
+/// 3. Project Header - Shows critical activities for a specific project
 class CriticalSubsectionsScreen extends ConsumerStatefulWidget {
   final int? categoryId; // null = all projects, set = specific category
   final int? projectId; // null = all projects in category, set = specific project
@@ -41,7 +41,7 @@ class _CriticalSubsectionsScreenState
   final _searchController = TextEditingController();
   String _searchQuery = '';
   final Set<int> _expandedProjects = {}; // Track expanded project IDs
-  List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical items
+  List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical activities
   List<int>? _cachedProjectIds; // Cache project IDs to detect changes
   final Map<String, bool> _toggledOffItems = {}; // Track items toggled off (key = "projectId_category_subsectionName")
   final Set<String> _selectedItemsForShare = {}; // Track items selected for sharing (key = "projectId_category_subsectionName")
@@ -69,6 +69,25 @@ class _CriticalSubsectionsScreenState
     super.dispose();
   }
 
+  String _getSubtitle() {
+    if (widget.projectId != null) {
+      return 'Single Project';
+    } else if (widget.categoryId == null) {
+      return 'All Projects';
+    } else {
+      // Get category name from projects
+      final projectState = ref.read(projectProvider);
+      if (projectState.projects.isNotEmpty) {
+        final project = projectState.projects.firstWhere(
+          (p) => p.categoryId == widget.categoryId,
+          orElse: () => projectState.projects.first,
+        );
+        return project.categoryName ?? 'Category Projects';
+      }
+      return 'Category Projects';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
@@ -88,7 +107,7 @@ class _CriticalSubsectionsScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Critical Items',
+                  'Critical Activities',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -96,11 +115,7 @@ class _CriticalSubsectionsScreenState
                   ),
                 ),
                 Text(
-                  widget.projectId != null
-                      ? 'Single Project'
-                      : widget.categoryId == null
-                          ? 'All Projects'
-                          : 'Category Projects',
+                  _getSubtitle(),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -121,7 +136,7 @@ class _CriticalSubsectionsScreenState
                     });
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search critical items...',
+                    hintText: 'Search critical activities...',
                     hintStyle: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 13,
@@ -227,7 +242,7 @@ class _CriticalSubsectionsScreenState
                     }
                   },
                   icon: Icon(_isTableView ? Icons.picture_as_pdf : Icons.share),
-                  tooltip: _isTableView ? 'Export as PDF' : 'Share critical items',
+                  tooltip: _isTableView ? 'Export as PDF' : 'Share critical activities',
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
@@ -380,7 +395,7 @@ class _CriticalSubsectionsScreenState
     }).toList();
 
     if (filtered.isEmpty) {
-      return _buildEmptyState('No matching critical items found');
+      return _buildEmptyState('No matching critical activities found');
     }
 
     // Group by project
@@ -552,7 +567,7 @@ class _CriticalSubsectionsScreenState
               ),
             ),
           ),
-          // Critical Items - Only show when expanded
+          // Critical Activities - Only show when expanded
           if (isExpanded)
             ListView.separated(
               shrinkWrap: true,
@@ -814,7 +829,7 @@ class _CriticalSubsectionsScreenState
     }).toList();
 
     if (filtered.isEmpty) {
-      return _buildEmptyState('No matching critical items found');
+      return _buildEmptyState('No matching critical activities found');
     }
 
     // Determine columns based on context
@@ -1392,12 +1407,12 @@ class _CriticalSubsectionsScreenState
     // Determine columns based on context
     final bool showCategoryColumn = widget.projectId == null;
 
-    // Get title based on context
-    final String title = widget.projectId != null
-        ? 'Critical Items - Single Project'
-        : widget.categoryId == null
-            ? 'Critical Items - All Projects'
-            : 'Critical Items - Category Projects';
+    // Get current date and time
+    final now = DateTime.now();
+    final dateTimeStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // Get subtitle
+    final String subtitle = _getSubtitle();
 
     pdf.addPage(
       pw.MultiPage(
@@ -1418,19 +1433,32 @@ class _CriticalSubsectionsScreenState
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
+                  pw.SizedBox(height: 8),
+                  pw.Row(
+                    children: [
+                      pw.Text(
+                        'Critical Activities',
+                        style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey800,
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Text(
+                        'as on $dateTimeStr',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    title,
+                    subtitle,
                     style: pw.TextStyle(
-                      fontSize: 14,
-                      color: PdfColors.grey700,
-                    ),
-                  ),
-                  pw.SizedBox(height: 2),
-                  pw.Text(
-                    'Generated on: ${DateTime.now().toString().split('.')[0]}',
-                    style: pw.TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       color: PdfColors.grey600,
                     ),
                   ),
@@ -1499,7 +1527,7 @@ class _CriticalSubsectionsScreenState
             pw.SizedBox(height: 24),
             // Footer
             pw.Text(
-              'Total Critical Items: ${items.length}',
+              'Total Critical Activities: ${items.length}',
               style: pw.TextStyle(
                 fontSize: 10,
                 fontWeight: pw.FontWeight.bold,
@@ -1579,7 +1607,7 @@ class _CriticalSubsectionsScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Choose an option to export the critical items table',
+                'Choose an option to export the critical activities table',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -1781,7 +1809,7 @@ class _CriticalSubsectionsScreenState
   void _showEmailComposer() {
     final toController = TextEditingController();
     final subjectController = TextEditingController(
-      text: 'Critical Subsections Alert - ${_selectedItemsForShare.length} items',
+      text: 'Critical Activities Alert - ${_selectedItemsForShare.length} items',
     );
     final bodyController = TextEditingController();
 
@@ -1832,7 +1860,7 @@ class _CriticalSubsectionsScreenState
         buffer.writeln('');
       });
 
-      buffer.writeln('Total Critical Items: ${_selectedItemsForShare.length}');
+      buffer.writeln('Total Critical Activities: ${_selectedItemsForShare.length}');
       buffer.writeln('\n');
       buffer.writeln('Generated by MSIDC Project Management System');
 
