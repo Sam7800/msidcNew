@@ -509,9 +509,85 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     return value.toString();
   }
 
+  /// Groups changes by their section
+  Map<String, List<Map<String, String>>> _groupChangesBySection(
+      List<Map<String, String>> changes) {
+    final grouped = <String, List<Map<String, String>>>{};
+
+    for (var change in changes) {
+      final field = change['field']!;
+      String section = 'Other';
+
+      // Determine section based on field name
+      if (field.contains('AA ')) {
+        section = 'AA (Administrative Approval)';
+      } else if (field.contains('DPR ')) {
+        section = 'DPR (Detailed Project Report)';
+      } else if (field.contains('BOQ ')) {
+        section = 'BOQ (Bill of Quantities)';
+      } else if (field.contains('Schedules ')) {
+        section = 'Schedules';
+      } else if (field.contains('Drawings ')) {
+        section = 'Drawings';
+      } else if (field.contains('Bid Documents ')) {
+        section = 'Bid Documents';
+      } else if (field.contains('ENV ')) {
+        section = 'ENV (Environmental Clearance)';
+      } else if (field.contains('LA ')) {
+        section = 'LA (Land Acquisition)';
+      } else if (field.contains('Utility Shifting ')) {
+        section = 'Utility Shifting Details';
+      } else if (field.contains('TS ')) {
+        section = 'TS (Technical Sanction)';
+      } else if (field.contains('NIT ')) {
+        section = 'NIT (Notice Inviting Tender)';
+      } else if (field.contains('CSD ')) {
+        section = 'CSD (Common Set of Deviations)';
+      } else if (field.contains('Technical Evaluation ')) {
+        section = 'Technical Evaluation';
+      } else if (field.contains('Financial Bid ')) {
+        section = 'Financial Bid';
+      } else if (field.contains('Bid Acceptance ')) {
+        section = 'Bid Acceptance';
+      } else if (field.contains('LOA ')) {
+        section = 'LOA (Letter of Acceptance)';
+      } else if (field.contains('PBG ')) {
+        section = 'PBG (Performance Bank Guarantee)';
+      } else if (field.contains('Work Order ')) {
+        section = 'Work Order';
+      } else if (field.contains('LD ')) {
+        section = 'LD (Liquidated Damages)';
+      } else if (field.contains('EOT ')) {
+        section = 'EOT (Extension of Time)';
+      } else if (field.contains('COS ')) {
+        section = 'COS (Change of Scope)';
+      } else if (field.contains('Audit Para ')) {
+        section = 'Audit Para';
+      } else if (field.contains('LAQ ')) {
+        section = 'LAQ (Legislative Questions)';
+      } else if (field.contains('Technical Audit ')) {
+        section = 'Technical Audit';
+      } else if (field.contains('Rev AA ')) {
+        section = 'Rev AA (Revised Administrative Approval)';
+      } else if (field.contains('Supplementary Agreement ')) {
+        section = 'Supplementary Agreement';
+      } else if (field.contains('EMD ')) {
+        section = 'Bid Submission';
+      }
+
+      if (!grouped.containsKey(section)) {
+        grouped[section] = [];
+      }
+      grouped[section]!.add(change);
+    }
+
+    return grouped;
+  }
+
   /// Shows the confirmation dialog with all changes
   void _showChangesDialog() {
     final changes = _getChanges();
+    final groupedChanges = _groupChangesBySection(changes);
 
     showDialog(
       context: context,
@@ -546,85 +622,127 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
                 constraints: const BoxConstraints(maxHeight: 400),
                 child: SingleChildScrollView(
                   child: Column(
-                    children: changes.map((change) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              change['field']!,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: groupedChanges.entries.map((sectionEntry) {
+                      final section = sectionEntry.key;
+                      final sectionChanges = sectionEntry.value;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Section container
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'From:',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        change['from']!,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.error,
-                                          decoration: TextDecoration.lineThrough,
-                                        ),
-                                      ),
-                                    ],
+                                // Section header
+                                Text(
+                                  section,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.arrow_forward,
-                                  size: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
+                                const SizedBox(height: 12),
+                                // Changes in this section
+                                ...sectionChanges.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final change = entry.value;
+                                  return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        'To:',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textTertiary,
+                                      if (index > 0) ...[
+                                        const SizedBox(height: 12),
+                                        const Divider(
+                                          color: AppColors.border,
+                                          thickness: 1,
+                                          height: 1,
+                                        ),
+                                        const SizedBox(height: 12),
+                                      ],
+                                      Text(
+                                        change['field']!,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        change['to']!,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.success,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'From:',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppColors.textTertiary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  change['from']!,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: AppColors.error,
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.arrow_forward,
+                                            size: 16,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'To:',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppColors.textTertiary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  change['to']!,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: AppColors.success,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
-                                  ),
-                                ),
+                                  );
+                                }),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       );
                     }).toList(),
                   ),
@@ -719,7 +837,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'AA No.'),
           const SizedBox(height: 12),
-          _buildDateField(label: 'Date'),
+          _buildDateField(label: 'Date', fieldKey: 'AA - Date'),
           const SizedBox(height: 12),
           _buildTextField(label: 'Broad Scope', maxLines: 3),
         ],
@@ -743,7 +861,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Likely Date of Completion'),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'DPR - Likely Date of Completion',
+            ),
           ),
         ],
         _buildCheckboxOption(
@@ -776,7 +897,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Likely Date of Completion'),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'BOQ - Likely Date of Completion',
+            ),
           ),
         ],
         _buildCheckboxOption(
@@ -801,16 +925,19 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('4. Schedules', _buildStatusCheckboxes(
       status: _schedulesStatus,
       onChanged: (value) => setState(() => _schedulesStatus = value),
+      section: 'Schedules',
     ));
 
     addSection('5. Drawings', _buildStatusCheckboxes(
       status: _drawingsStatus,
       onChanged: (value) => setState(() => _drawingsStatus = value),
+      section: 'Drawings',
     ));
 
     addSection('6. Bid Documents (NIT/RFP/Schedules/Drawings Volume)', _buildStatusCheckboxes(
       status: _bidDocumentsStatus,
       onChanged: (value) => setState(() => _bidDocumentsStatus = value),
+      section: 'Bid Documents',
     ));
 
     // 7. ENV (Environmental Clearance)
@@ -829,7 +956,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           _buildApplicableProposalFields(_envProposalStatus, (value) {
             setState(() => _envProposalStatus = value);
-          }),
+          }, section: 'ENV'),
         ],
       ],
     ));
@@ -850,7 +977,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           _buildApplicableProposalFields(_laProposalStatus, (value) {
             setState(() => _laProposalStatus = value);
-          }),
+          }, section: 'LA'),
         ],
       ],
     ));
@@ -873,7 +1000,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           _buildApplicableProposalFields(_utilityShiftingProposalStatus,
               (value) {
             setState(() => _utilityShiftingProposalStatus = value);
-          }),
+          }, section: 'Utility Shifting'),
         ],
       ],
     ));
@@ -909,7 +1036,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'TS No.'),
           const SizedBox(height: 12),
-          _buildDateField(label: 'Date'),
+          _buildDateField(label: 'Date', fieldKey: 'TS - Date'),
           const SizedBox(height: 12),
           _buildTablePlaceholder(
             rows: 8,
@@ -982,7 +1109,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('12. Pre-bid', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDateField(label: 'Date'),
+        _buildDateField(label: 'Date', fieldKey: 'Pre-bid - Date'),
         const SizedBox(height: 12),
         _buildTextField(label: 'No. of Bidders Participated'),
         const SizedBox(height: 12),
@@ -1020,7 +1147,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Date'),
+            child: _buildDateField(label: 'Date', fieldKey: 'CSD - Date'),
           ),
         ],
       ],
@@ -1030,7 +1157,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('14. Bid Submission', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDateField(label: 'Date'),
+        _buildDateField(label: 'Date', fieldKey: 'Bid Submission - Date'),
         const SizedBox(height: 12),
         _buildTextField(label: '# of Bidders Tendered'),
         const SizedBox(height: 12),
@@ -1067,7 +1194,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Likely Date of Completion'),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'Technical Evaluation - Likely Date of Completion',
+            ),
           ),
         ],
         _buildCheckboxOption(
@@ -1102,7 +1232,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('16. Financial Bid', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDateField(label: 'Date'),
+        _buildDateField(label: 'Date', fieldKey: 'Financial Bid - Date'),
         const SizedBox(height: 12),
         _buildTextField(
             label:
@@ -1144,7 +1274,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         if (_loaStatus == 'not_issued') ...[
           const SizedBox(height: 12),
-          _buildTextField(label: 'Reasons'),
+          _buildTextField(label: 'Reasons', fieldKey: 'LOA - Reasons'),
         ],
       ],
     ));
@@ -1163,7 +1293,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         if (_pbgStatus == 'submitted') ...[
           const SizedBox(height: 12),
-          _buildDateField(label: 'Date'),
+          _buildDateField(label: 'Date', fieldKey: 'PBG - Date'),
           const SizedBox(height: 12),
           _buildTextField(label: 'Amount'),
           const SizedBox(height: 12),
@@ -1188,10 +1318,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         const SizedBox(height: 12),
         if (_workOrderStatus == 'not_issued') ...[
-          _buildTextField(label: 'Reasons'),
+          _buildTextField(label: 'Reasons', fieldKey: 'Work Order - Reasons'),
         ],
         if (_workOrderStatus == 'issued') ...[
-          _buildDateField(label: 'Date'),
+          _buildDateField(label: 'Date', fieldKey: 'Work Order - Date'),
           const SizedBox(height: 12),
           _buildTextField(label: 'Amount'),
           const SizedBox(height: 12),
@@ -1208,7 +1338,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('21. Agreement Amount', _buildTextField(label: 'Amount (Rs. Lakhs)'));
 
     // 22. Appointed Date
-    addSection('22. Appointed Date', _buildDateField(label: 'Date'));
+    addSection('22. Appointed Date', _buildDateField(label: 'Date', fieldKey: 'Appointed Date - Date'));
 
     // 23. Tender Period
     addSection('23. Tender Period', _buildTextField(label: '# of Months'));
@@ -1323,7 +1453,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ],
           if (_cosStatus == 'submitted') ...[
-            _buildDateField(label: 'Date'),
+            _buildDateField(label: 'Date', fieldKey: 'COS - Date'),
           ],
           if (_cosStatus == 'approved') ...[
             _buildTablePlaceholder(
@@ -1521,7 +1651,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             const SizedBox(height: 12),
             _buildTextField(label: 'Revised AA No.'),
             const SizedBox(height: 12),
-            _buildDateField(label: 'Date'),
+            _buildDateField(label: 'Date', fieldKey: 'Rev AA - Date'),
             const SizedBox(height: 12),
             _buildPhotoUploadButton(label: 'RAA Table of Recap Sheet'),
           ],
@@ -1548,7 +1678,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Amount (Rs. Lakhs)'),
           const SizedBox(height: 12),
-          _buildDateField(label: 'Date'),
+          _buildDateField(label: 'Date', fieldKey: 'Supplementary Agreement - Date'),
           const SizedBox(height: 12),
           _buildTextField(label: 'Scope of Work', maxLines: 3),
           const SizedBox(height: 12),
@@ -1563,6 +1693,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   @override
   Widget build(BuildContext context) {
     final hasChanges = _hasChanges();
+    final changesCount = hasChanges ? _getChanges().length : 0;
 
     return Container(
       color: AppColors.background,
@@ -1645,10 +1776,8 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
                 // Submit button - only visible when there are changes
                 if (hasChanges) ...[
                   const SizedBox(width: 16),
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: _showChangesDialog,
-                    icon: const Icon(Icons.save, size: 18),
-                    label: const Text('Submit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -1660,6 +1789,31 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$changesCount',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('Submit'),
+                      ],
                     ),
                   ),
                 ],
@@ -1715,9 +1869,12 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     required String label,
     int maxLines = 1,
     TextInputType? keyboardType,
+    String? fieldKey,
   }) {
     // Get or create controller for this field
-    final controller = _getController(label);
+    // Use fieldKey if provided, otherwise use label
+    final controllerKey = fieldKey ?? label;
+    final controller = _getController(controllerKey);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1762,9 +1919,11 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     );
   }
 
-  Widget _buildDateField({required String label}) {
+  Widget _buildDateField({required String label, String? fieldKey}) {
     // Get or create controller for this field
-    final controller = _getController(label);
+    // Use fieldKey if provided, otherwise use label
+    final controllerKey = fieldKey ?? label;
+    final controller = _getController(controllerKey);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1923,6 +2082,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   Widget _buildStatusCheckboxes({
     required String status,
     required ValueChanged<String> onChanged,
+    String section = '',
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1941,7 +2101,12 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Likely Date of Completion'),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: section.isNotEmpty
+                ? '$section - Likely Date of Completion'
+                : 'Likely Date of Completion',
+            ),
           ),
         ],
         _buildCheckboxOption(
@@ -1959,7 +2124,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   }
 
   Widget _buildApplicableProposalFields(
-      String status, ValueChanged<String> onChanged) {
+      String status, ValueChanged<String> onChanged, {String section = ''}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1982,11 +2147,17 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Date'),
+            child: _buildDateField(
+              label: 'Date',
+              fieldKey: section.isNotEmpty ? '$section - Date' : 'Date',
+            ),
           ),
         ],
         const SizedBox(height: 12),
-        _buildTextField(label: 'Status'),
+        _buildTextField(
+          label: 'Status',
+          fieldKey: section.isNotEmpty ? '$section - Status' : 'Status',
+        ),
       ],
     );
   }
@@ -2067,7 +2238,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(label: 'Date'),
+            child: _buildDateField(label: 'Date', fieldKey: 'EOT - Date'),
           ),
         ],
         if (_eotOptions.contains('approved')) ...[
