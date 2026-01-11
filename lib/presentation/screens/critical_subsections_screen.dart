@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../../theme/app_colors.dart';
 import '../providers/repository_providers.dart';
 import '../providers/project_provider.dart';
@@ -35,13 +40,13 @@ class _CriticalSubsectionsScreenState
     extends ConsumerState<CriticalSubsectionsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _selectedCategory = 'All'; // All, DPR, Work, PMS
   final Set<int> _expandedProjects = {}; // Track expanded project IDs
   List<Map<String, dynamic>>? _cachedCriticalItems; // Cache critical items
   List<int>? _cachedProjectIds; // Cache project IDs to detect changes
   final Map<String, bool> _toggledOffItems = {}; // Track items toggled off (key = "projectId_category_subsectionName")
   final Set<String> _selectedItemsForShare = {}; // Track items selected for sharing (key = "projectId_category_subsectionName")
   bool _isSelectionMode = false; // Whether we're in selection mode
+  bool _isTableView = true; // Whether we're in table view mode - default to true
 
   @override
   void initState() {
@@ -77,27 +82,83 @@ class _CriticalSubsectionsScreenState
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const Text(
-              'Critical Items',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Critical Items',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  widget.projectId != null
+                      ? 'Single Project'
+                      : widget.categoryId == null
+                          ? 'All Projects'
+                          : 'Category Projects',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              widget.projectId != null
-                  ? 'Single Project'
-                  : widget.categoryId == null
-                      ? 'All Projects'
-                      : 'Category Projects',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
+            const SizedBox(width: 24),
+            Expanded(
+              child: SizedBox(
+                height: 40,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase().trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search critical items...',
+                    hintStyle: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    isDense: true,
+                  ),
+                ),
               ),
             ),
           ],
@@ -155,13 +216,56 @@ class _CriticalSubsectionsScreenState
                 ],
                 IconButton(
                   onPressed: () {
-                    setState(() {
-                      _isSelectionMode = true;
-                    });
+                    if (_isTableView) {
+                      // In table view, show PDF options
+                      _showPDFOptions();
+                    } else {
+                      // In list view, enable selection mode for email
+                      setState(() {
+                        _isSelectionMode = true;
+                      });
+                    }
                   },
-                  icon: const Icon(Icons.share),
-                  tooltip: 'Share critical items',
+                  icon: Icon(_isTableView ? Icons.picture_as_pdf : Icons.share),
+                  tooltip: _isTableView ? 'Export as PDF' : 'Share critical items',
                   color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                // View Toggle
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.view_list,
+                        size: 16,
+                        color: !_isTableView ? AppColors.primary : AppColors.textTertiary,
+                      ),
+                      const SizedBox(width: 4),
+                      Switch(
+                        value: _isTableView,
+                        onChanged: (value) {
+                          setState(() {
+                            _isTableView = value;
+                          });
+                        },
+                        activeThumbColor: AppColors.primary,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.table_chart,
+                        size: 16,
+                        color: _isTableView ? AppColors.primary : AppColors.textTertiary,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -173,82 +277,7 @@ class _CriticalSubsectionsScreenState
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Search and Filter Bar
-          Container(
-            color: AppColors.surface,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase().trim();
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search critical items...',
-                    hintStyle: TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 14,
-                    ),
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.primary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Category Filter Chips
-                Row(
-                  children: [
-                    _buildFilterChip('All'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('DPR'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Work'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('PMS'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Critical Items List
-          Expanded(
-            child: _buildCriticalItemsList(projectState),
-          ),
-        ],
-      ),
+      body: _buildCriticalItemsList(projectState),
     );
   }
 
@@ -326,14 +355,14 @@ class _CriticalSubsectionsScreenState
   }
 
   Widget _buildCriticalItemsContent(List<Map<String, dynamic>> criticalItems) {
-    // Apply filters
-    final filtered = criticalItems.where((item) {
-      // Category filter
-      if (_selectedCategory != 'All' &&
-          item['category'] != _selectedCategory) {
-        return false;
-      }
+    // If table view is enabled, show table
+    if (_isTableView) {
+      return _buildTableView(criticalItems);
+    }
 
+    // Otherwise, show list view
+    // Apply search filter
+    final filtered = criticalItems.where((item) {
       // Search filter
       if (_searchQuery.isNotEmpty) {
         final projectName =
@@ -381,38 +410,6 @@ class _CriticalSubsectionsScreenState
       if (a[i] != b[i]) return false;
     }
     return true;
-  }
-
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedCategory == label;
-    return GestureDetector(
-      onTap: () {
-        if (_selectedCategory != label) {
-          setState(() {
-            _selectedCategory = label;
-            // No need to clear cache - filtering is done on cached data
-          });
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildProjectGroup(
@@ -797,6 +794,293 @@ class _CriticalSubsectionsScreenState
     );
   }
 
+  Widget _buildTableView(List<Map<String, dynamic>> criticalItems) {
+    // Apply search filter
+    final filtered = criticalItems.where((item) {
+      // Search filter
+      if (_searchQuery.isNotEmpty) {
+        final projectName =
+            item['project_name']?.toString().toLowerCase() ?? '';
+        final subsectionName =
+            item['subsection_name']?.toString().toLowerCase() ?? '';
+        final category = item['category']?.toString().toLowerCase() ?? '';
+
+        return projectName.contains(_searchQuery) ||
+            subsectionName.contains(_searchQuery) ||
+            category.contains(_searchQuery);
+      }
+
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyState('No matching critical items found');
+    }
+
+    // Determine columns based on context
+    final bool showCategoryColumn = widget.projectId == null;
+    final bool showProjectColumn = true;
+
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width - 20,
+          child: SingleChildScrollView(
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(
+                AppColors.primary.withOpacity(0.05),
+              ),
+              headingRowHeight: 40,
+              dataRowMinHeight: 32,
+              dataRowMaxHeight: 48,
+              columnSpacing: 16,
+              horizontalMargin: 10,
+              border: TableBorder.all(
+                color: AppColors.textSecondary,
+                width: 1.5,
+              ),
+              dividerThickness: 1.5,
+              columns: [
+                // Category column - Project Category (only if not viewing a specific project)
+                if (showCategoryColumn)
+                  DataColumn(
+                    label: Text(
+                      'Category',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                // Project column
+                if (showProjectColumn)
+                  DataColumn(
+                    label: Text(
+                      'Project',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                // Activity column
+                DataColumn(
+                  label: Text(
+                    'Activity',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                // Person Responsible column
+                DataColumn(
+                  label: Text(
+                    'Person Responsible',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                // Pending With Whom column
+                DataColumn(
+                  label: Text(
+                    'Pending With Whom',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+              rows: filtered.map((item) {
+              final category = item['category'] as String; // DPR/Work/PMS
+              final subsectionName = item['subsection_name'] as String;
+              final projectName = item['project_name'] as String;
+              final projectCategoryName = item['project_category_name'] as String? ?? 'Unknown';
+              final projectCategoryColor = item['project_category_color'] as String?;
+              final personResponsible = item['person_responsible'] as String? ?? '-';
+              final pendingWith = item['pending_with'] as String? ?? '-';
+              final projectId = item['project_id'] as int;
+
+              // Project category color
+              Color? categoryColor;
+              if (projectCategoryColor != null) {
+                try {
+                  categoryColor = Color(int.parse(projectCategoryColor.replaceFirst('#', '0xFF')));
+                } catch (e) {
+                  categoryColor = null;
+                }
+              }
+
+              final itemKey = '${projectId}_${category}_$subsectionName';
+              final isToggledOff = _toggledOffItems[itemKey] ?? false;
+
+              return DataRow(
+                color: WidgetStateProperty.resolveWith<Color?>(
+                  (Set<WidgetState> states) {
+                    if (isToggledOff) {
+                      return AppColors.background.withOpacity(0.5);
+                    }
+                    if (states.contains(WidgetState.hovered)) {
+                      return AppColors.primary.withOpacity(0.05);
+                    }
+                    return null;
+                  },
+                ),
+                cells: [
+                  // Category cell - Project Category
+                  if (showCategoryColumn)
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (categoryColor ?? AppColors.primary).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          projectCategoryName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: categoryColor ?? AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Project cell
+                  if (showProjectColumn)
+                    DataCell(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 250),
+                        child: Text(
+                          projectName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isToggledOff
+                                ? AppColors.textSecondary
+                                : AppColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                            decoration: isToggledOff
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  // Activity cell
+                  DataCell(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      child: Text(
+                        subsectionName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isToggledOff
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          decoration: isToggledOff
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    onTap: () async {
+                      // Navigate to detail screen
+                      final projectState = ref.read(projectProvider);
+                      final project = projectState.projects.firstWhere(
+                        (p) => p.id == projectId,
+                        orElse: () => throw Exception('Project not found'),
+                      );
+
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SubsectionDetailScreen(
+                            project: project,
+                            category: category,
+                            subsectionName: subsectionName,
+                          ),
+                        ),
+                      );
+
+                      // Refresh if critical status changed (unflagged)
+                      if (result == false) {
+                        setState(() {
+                          _cachedCriticalItems = null;
+                          _cachedProjectIds = null;
+                          _toggledOffItems.clear();
+                        });
+                      }
+                    },
+                  ),
+                  // Person Responsible cell
+                  DataCell(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 180),
+                      child: Text(
+                        personResponsible,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isToggledOff
+                              ? AppColors.textTertiary
+                              : AppColors.textSecondary,
+                          decoration: isToggledOff
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                  // Pending With Whom cell
+                  DataCell(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 180),
+                      child: Text(
+                        pendingWith,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isToggledOff
+                              ? AppColors.textTertiary
+                              : AppColors.textSecondary,
+                          decoration: isToggledOff
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(String message) {
     return Center(
       child: Column(
@@ -853,9 +1137,10 @@ class _CriticalSubsectionsScreenState
       // Load work entry data to get person responsible
       final workEntry = await workEntryRepo.getWorkEntryOrDraftByProjectId(projectId);
 
-      // Add project name, category, and person responsible to each item
+      // Add project name, category, person responsible, and pending_with to each item
       for (var item in items) {
         String? personResponsible;
+        String? pendingWith;
 
         if (workEntry != null) {
           final category = item['category'] as String;
@@ -873,13 +1158,24 @@ class _CriticalSubsectionsScreenState
             orElse: () => '',
           );
 
+          // Find the pending_with field (usually ends with _pending_with)
+          final pendingWithFieldKey = fields.firstWhere(
+            (field) => field.endsWith('_pending_with'),
+            orElse: () => '',
+          );
+
+          final sectionData = category == 'DPR'
+              ? workEntry.dprSection
+              : category == 'Work'
+                  ? workEntry.workSection
+                  : workEntry.pmsSection;
+
           if (personFieldKey.isNotEmpty) {
-            final sectionData = category == 'DPR'
-                ? workEntry.dprSection
-                : category == 'Work'
-                    ? workEntry.workSection
-                    : workEntry.pmsSection;
             personResponsible = sectionData[personFieldKey]?.toString();
+          }
+
+          if (pendingWithFieldKey.isNotEmpty) {
+            pendingWith = sectionData[pendingWithFieldKey]?.toString();
           }
         }
 
@@ -889,6 +1185,7 @@ class _CriticalSubsectionsScreenState
           'project_category_name': project.categoryName ?? 'Unknown',
           'project_category_color': project.categoryColor,
           'person_responsible': personResponsible,
+          'pending_with': pendingWith,
         });
       }
     }
@@ -1087,6 +1384,398 @@ class _CriticalSubsectionsScreenState
         );
       }
     }
+  }
+
+  Future<pw.Document> _generatePDF(List<Map<String, dynamic>> items) async {
+    final pdf = pw.Document();
+
+    // Determine columns based on context
+    final bool showCategoryColumn = widget.projectId == null;
+
+    // Get title based on context
+    final String title = widget.projectId != null
+        ? 'Critical Items - Single Project'
+        : widget.categoryId == null
+            ? 'Critical Items - All Projects'
+            : 'Critical Items - Category Projects';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return [
+            // Header
+            pw.Header(
+              level: 0,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'MSIDC Project Management System',
+                    style: pw.TextStyle(
+                      fontSize: 20,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    title,
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'Generated on: ${DateTime.now().toString().split('.')[0]}',
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Divider(thickness: 2),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            // Table
+            pw.Table(
+              border: pw.TableBorder.all(
+                color: PdfColors.grey400,
+                width: 1,
+              ),
+              columnWidths: showCategoryColumn
+                  ? {
+                      0: const pw.FlexColumnWidth(1.5),
+                      1: const pw.FlexColumnWidth(2.5),
+                      2: const pw.FlexColumnWidth(3),
+                      3: const pw.FlexColumnWidth(2),
+                      4: const pw.FlexColumnWidth(2),
+                    }
+                  : {
+                      0: const pw.FlexColumnWidth(3),
+                      1: const pw.FlexColumnWidth(3.5),
+                      2: const pw.FlexColumnWidth(2),
+                      3: const pw.FlexColumnWidth(2),
+                    },
+              children: [
+                // Header Row
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey300,
+                  ),
+                  children: [
+                    if (showCategoryColumn)
+                      _buildPDFHeaderCell('Category'),
+                    _buildPDFHeaderCell('Project'),
+                    _buildPDFHeaderCell('Activity'),
+                    _buildPDFHeaderCell('Person Responsible'),
+                    _buildPDFHeaderCell('Pending With Whom'),
+                  ],
+                ),
+                // Data Rows
+                ...items.map((item) {
+                  final projectCategoryName = item['project_category_name'] as String? ?? 'Unknown';
+                  final projectName = item['project_name'] as String;
+                  final subsectionName = item['subsection_name'] as String;
+                  final personResponsible = item['person_responsible'] as String? ?? '-';
+                  final pendingWith = item['pending_with'] as String? ?? '-';
+
+                  return pw.TableRow(
+                    children: [
+                      if (showCategoryColumn)
+                        _buildPDFDataCell(projectCategoryName),
+                      _buildPDFDataCell(projectName),
+                      _buildPDFDataCell(subsectionName),
+                      _buildPDFDataCell(personResponsible),
+                      _buildPDFDataCell(pendingWith),
+                    ],
+                  );
+                }).toList(),
+              ],
+            ),
+            pw.SizedBox(height: 24),
+            // Footer
+            pw.Text(
+              'Total Critical Items: ${items.length}',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.grey700,
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    return pdf;
+  }
+
+  pw.Widget _buildPDFHeaderCell(String text) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 10,
+          fontWeight: pw.FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPDFDataCell(String text) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        style: const pw.TextStyle(
+          fontSize: 9,
+        ),
+      ),
+    );
+  }
+
+  void _showPDFOptions() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.picture_as_pdf,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Export as PDF',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Choose an option to export the critical items table',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Share/Print PDF Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _sharePDF();
+                  },
+                  icon: const Icon(Icons.share, size: 20),
+                  label: const Text(
+                    'Share/Print PDF',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Download PDF Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _downloadPDF();
+                  },
+                  icon: const Icon(Icons.download, size: 20),
+                  label: const Text(
+                    'Download PDF',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _sharePDF() async {
+    try {
+      // Get filtered items
+      final items = _getFilteredItems();
+
+      if (items.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No items to export'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Generate PDF
+      final pdf = await _generatePDF(items);
+
+      // Share/Print PDF
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadPDF() async {
+    try {
+      // Get filtered items
+      final items = _getFilteredItems();
+
+      if (items.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No items to export'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Generate PDF
+      final pdf = await _generatePDF(items);
+
+      // Get downloads directory
+      final directory = await getDownloadsDirectory();
+      if (directory == null) {
+        throw Exception('Could not access downloads directory');
+      }
+
+      // Create filename with timestamp
+      final timestamp = DateTime.now().toString().replaceAll(':', '-').split('.')[0];
+      final filename = 'Critical_Items_$timestamp.pdf';
+      final file = File('${directory.path}/$filename');
+
+      // Save PDF
+      await file.writeAsBytes(await pdf.save());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF saved to Downloads: $filename'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Open',
+              textColor: Colors.white,
+              onPressed: () async {
+                // Open the file using the default PDF viewer
+                final Uri fileUri = Uri.file(file.path);
+                if (await canLaunchUrl(fileUri)) {
+                  await launchUrl(fileUri);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _getFilteredItems() {
+    if (_cachedCriticalItems == null) return [];
+
+    return _cachedCriticalItems!.where((item) {
+      // Search filter
+      if (_searchQuery.isNotEmpty) {
+        final projectName =
+            item['project_name']?.toString().toLowerCase() ?? '';
+        final subsectionName =
+            item['subsection_name']?.toString().toLowerCase() ?? '';
+        final category = item['category']?.toString().toLowerCase() ?? '';
+
+        return projectName.contains(_searchQuery) ||
+            subsectionName.contains(_searchQuery) ||
+            category.contains(_searchQuery);
+      }
+
+      return true;
+    }).toList();
   }
 
   void _showEmailComposer() {
