@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
+import 'critical_marker_widget.dart';
+import 'dynamic_table_widget.dart';
 
 /// Work Entry Form Widget - Main form container
 class WorkEntryFormWidget extends StatefulWidget {
@@ -58,6 +60,36 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
 
   // EMD verification for Bid Submission
   bool _emdVerificationDone = false;
+
+  // Critical markers state
+  Map<String, bool> _criticalMarkers = {
+    'dpr_submitted': false,
+    'schedules_submitted': false,
+    'drawings_submitted': false,
+    'bid_documents_submitted': false,
+    'env_under_preparation': false,
+    'la_under_preparation': false,
+    'utility_under_preparation': false,
+    'utility_submitted_date': false,
+    'ts_in_progress_date': false,
+    'nit_likely_date': false,
+    'csd_queries_in_progress': false,
+    'csd_replies_submitted': false,
+    'tech_eval_in_progress': false,
+    'bid_accept_in_progress': false,
+    'bid_accept_submitted': false,
+    'bid_accept_board_approval': false,
+    'loa_issued': false,
+    'loa_not_issued': false,
+    'pbg_not_submitted': false,
+    'work_order_not_issued': false,
+    'eot_submitted_date': false,
+    'cos_under_consideration': false,
+    'cos_submitted_date': false,
+    'audit_para_replies_submitted': false,
+    'laq_details_questions': false,
+    'rev_aa_submitted': false,
+  };
 
   // Initial state tracking for change detection
   late Map<String, dynamic> _initialState;
@@ -867,10 +899,11 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ),
         ],
-        _buildCheckboxOption(
+        _buildCheckboxOptionWithCritical(
           label: 'Submitted',
           value: _dprStatus == 'submitted',
           onChanged: (val) => setState(() => _dprStatus = 'submitted'),
+          criticalKey: 'dpr_submitted',
         ),
         _buildCheckboxOption(
           label: 'Approved',
@@ -912,32 +945,125 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildTablePlaceholder(
-              rows: 5,
-              columns: 3,
+            child: DynamicTableWidget(
               title: 'Broad Item wise Break-up of Amounts',
+              columnHeaders: const ['Item', 'Description', 'Amount (Rs.)'],
+              initialRows: 1,
             ),
           ),
         ],
       ],
     ));
 
-    addSection('4. Schedules', _buildStatusCheckboxes(
-      status: _schedulesStatus,
-      onChanged: (value) => setState(() => _schedulesStatus = value),
-      section: 'Schedules',
+    addSection('4. Schedules', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCheckboxOption(
+          label: 'Not Started',
+          value: _schedulesStatus == 'not_started',
+          onChanged: (val) => setState(() => _schedulesStatus = 'not_started'),
+        ),
+        _buildCheckboxOption(
+          label: 'In Progress',
+          value: _schedulesStatus == 'in_progress',
+          onChanged: (val) => setState(() => _schedulesStatus = 'in_progress'),
+        ),
+        if (_schedulesStatus == 'in_progress') ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'Schedules - Likely Date of Completion',
+            ),
+          ),
+        ],
+        _buildCheckboxOptionWithCritical(
+          label: 'Submitted',
+          value: _schedulesStatus == 'submitted',
+          onChanged: (val) => setState(() => _schedulesStatus = 'submitted'),
+          criticalKey: 'schedules_submitted',
+        ),
+        _buildCheckboxOption(
+          label: 'Approved',
+          value: _schedulesStatus == 'approved',
+          onChanged: (val) => setState(() => _schedulesStatus = 'approved'),
+        ),
+      ],
     ));
 
-    addSection('5. Drawings', _buildStatusCheckboxes(
-      status: _drawingsStatus,
-      onChanged: (value) => setState(() => _drawingsStatus = value),
-      section: 'Drawings',
+    addSection('5. Drawings', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCheckboxOption(
+          label: 'Not Started',
+          value: _drawingsStatus == 'not_started',
+          onChanged: (val) => setState(() => _drawingsStatus = 'not_started'),
+        ),
+        _buildCheckboxOption(
+          label: 'In Progress',
+          value: _drawingsStatus == 'in_progress',
+          onChanged: (val) => setState(() => _drawingsStatus = 'in_progress'),
+        ),
+        if (_drawingsStatus == 'in_progress') ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'Drawings - Likely Date of Completion',
+            ),
+          ),
+        ],
+        _buildCheckboxOptionWithCritical(
+          label: 'Submitted',
+          value: _drawingsStatus == 'submitted',
+          onChanged: (val) => setState(() => _drawingsStatus = 'submitted'),
+          criticalKey: 'drawings_submitted',
+        ),
+        _buildCheckboxOption(
+          label: 'Approved',
+          value: _drawingsStatus == 'approved',
+          onChanged: (val) => setState(() => _drawingsStatus = 'approved'),
+        ),
+      ],
     ));
 
-    addSection('6. Bid Documents (NIT/RFP/Schedules/Drawings Volume)', _buildStatusCheckboxes(
-      status: _bidDocumentsStatus,
-      onChanged: (value) => setState(() => _bidDocumentsStatus = value),
-      section: 'Bid Documents',
+    addSection('6. Bid Documents (NIT/RFP/Schedules/Drawings Volume)', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCheckboxOption(
+          label: 'Not Started',
+          value: _bidDocumentsStatus == 'not_started',
+          onChanged: (val) => setState(() => _bidDocumentsStatus = 'not_started'),
+        ),
+        _buildCheckboxOption(
+          label: 'In Progress',
+          value: _bidDocumentsStatus == 'in_progress',
+          onChanged: (val) => setState(() => _bidDocumentsStatus = 'in_progress'),
+        ),
+        if (_bidDocumentsStatus == 'in_progress') ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: _buildDateField(
+              label: 'Likely Date of Completion',
+              fieldKey: 'Bid Documents - Likely Date of Completion',
+            ),
+          ),
+        ],
+        _buildCheckboxOptionWithCritical(
+          label: 'Submitted',
+          value: _bidDocumentsStatus == 'submitted',
+          onChanged: (val) => setState(() => _bidDocumentsStatus = 'submitted'),
+          criticalKey: 'bid_documents_submitted',
+        ),
+        _buildCheckboxOption(
+          label: 'Approved',
+          value: _bidDocumentsStatus == 'approved',
+          onChanged: (val) => setState(() => _bidDocumentsStatus = 'approved'),
+        ),
+      ],
     ));
 
     // 7. ENV (Environmental Clearance)
@@ -956,7 +1082,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           _buildApplicableProposalFields(_envProposalStatus, (value) {
             setState(() => _envProposalStatus = value);
-          }, section: 'ENV'),
+          }, section: 'ENV', underPrepCriticalKey: 'env_under_preparation'),
         ],
       ],
     ));
@@ -977,7 +1103,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           _buildApplicableProposalFields(_laProposalStatus, (value) {
             setState(() => _laProposalStatus = value);
-          }, section: 'LA'),
+          }, section: 'LA', underPrepCriticalKey: 'la_under_preparation'),
         ],
       ],
     ));
@@ -1000,7 +1126,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           _buildApplicableProposalFields(_utilityShiftingProposalStatus,
               (value) {
             setState(() => _utilityShiftingProposalStatus = value);
-          }, section: 'Utility Shifting'),
+          }, section: 'Utility Shifting', underPrepCriticalKey: 'utility_under_preparation', submittedDateCriticalKey: 'utility_submitted_date'),
         ],
       ],
     ));
@@ -1026,7 +1152,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           ),
           if (_tsAwaitedStatus == 'in_progress') ...[
             const SizedBox(height: 12),
-            _buildDateField(label: 'Likely Date of Submission'),
+            _buildDateFieldWithCritical(
+              label: 'Likely Date of Submission',
+              criticalKey: 'ts_in_progress_date',
+            ),
           ],
           const SizedBox(height: 12),
           _buildTextField(label: 'Status'),
@@ -1038,10 +1167,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildDateField(label: 'Date', fieldKey: 'TS - Date'),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 8,
-            columns: 3,
+          DynamicTableWidget(
             title: 'Detailed Scope',
+            columnHeaders: const ['Item', 'Description', 'Amount (Rs.)'],
+            initialRows: 1,
           ),
         ],
       ],
@@ -1061,7 +1190,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         const SizedBox(height: 16),
         if (_nitStatus == 'not_issued') ...[
-          _buildDateField(label: 'Likely Date of Issue'),
+          _buildDateFieldWithCritical(
+            label: 'Likely Date of Issue',
+            criticalKey: 'nit_likely_date',
+          ),
         ],
         if (_nitStatus == 'issued') ...[
           _buildRadioGroup(
@@ -1081,11 +1213,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             const SizedBox(height: 12),
             _buildTextField(label: 'Amount (Rs. in Lakhs)'),
             const SizedBox(height: 12),
-            _buildTablePlaceholder(
-              rows: 4,
-              columns: 4,
+            DynamicTableWidget(
               title: 'Broad Items with Amounts and EMD',
-              headers: const ['Item', 'Amount', 'EMD', 'Notes'],
+              columnHeaders: const ['Item', 'Amount (Rs.)', 'EMD Amount', 'Notes'],
+              initialRows: 1,
             ),
             const SizedBox(height: 16),
             Text(
@@ -1121,17 +1252,19 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('13. CSD (Common Set of Deviations)', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildRadioOption(
+        _buildRadioOptionWithCritical(
           label: 'Queries Reply in Progress',
           value: _csdStatus == 'queries_in_progress',
           onChanged: (val) =>
               setState(() => _csdStatus = 'queries_in_progress'),
+          criticalKey: 'csd_queries_in_progress',
         ),
-        _buildRadioOption(
+        _buildRadioOptionWithCritical(
           label: 'Replies Submitted for Approval',
           value: _csdStatus == 'replies_submitted',
           onChanged: (val) =>
               setState(() => _csdStatus = 'replies_submitted'),
+          criticalKey: 'csd_replies_submitted',
         ),
         _buildRadioOption(
           label: 'Replies Approved',
@@ -1194,9 +1327,10 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(
+            child: _buildDateFieldWithCritical(
               label: 'Likely Date of Completion',
               fieldKey: 'Technical Evaluation - Likely Date of Completion',
+              criticalKey: 'tech_eval_in_progress',
             ),
           ),
         ],
@@ -1267,10 +1401,76 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('18. LOA (Letter of Acceptance)', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildRadioGroup(
-          value: _loaStatus,
-          options: const {'issued': 'Issued', 'not_issued': 'Not Issued'},
-          onChanged: (value) => setState(() => _loaStatus = value!),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRadioGroup(
+                value: _loaStatus,
+                options: const {'issued': 'Issued', 'not_issued': 'Not Issued'},
+                onChanged: (value) => setState(() => _loaStatus = value!),
+              ),
+            ),
+            if (_loaStatus == 'issued')
+              Tooltip(
+                message: _criticalMarkers['loa_issued']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['loa_issued'] = !_criticalMarkers['loa_issued']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['loa_issued']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['loa_issued']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['loa_issued']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['loa_issued']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            if (_loaStatus == 'not_issued')
+              Tooltip(
+                message: _criticalMarkers['loa_not_issued']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['loa_not_issued'] = !_criticalMarkers['loa_not_issued']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['loa_not_issued']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['loa_not_issued']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['loa_not_issued']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['loa_not_issued']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         if (_loaStatus == 'not_issued') ...[
           const SizedBox(height: 12),
@@ -1283,13 +1483,49 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('19. PBG (Performance Bank Guarantee)', Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildRadioGroup(
-          value: _pbgStatus,
-          options: const {
-            'not_submitted': 'Not Submitted',
-            'submitted': 'Submitted'
-          },
-          onChanged: (value) => setState(() => _pbgStatus = value!),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRadioGroup(
+                value: _pbgStatus,
+                options: const {
+                  'not_submitted': 'Not Submitted',
+                  'submitted': 'Submitted'
+                },
+                onChanged: (value) => setState(() => _pbgStatus = value!),
+              ),
+            ),
+            if (_pbgStatus == 'not_submitted')
+              Tooltip(
+                message: _criticalMarkers['pbg_not_submitted']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['pbg_not_submitted'] = !_criticalMarkers['pbg_not_submitted']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['pbg_not_submitted']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['pbg_not_submitted']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['pbg_not_submitted']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['pbg_not_submitted']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         if (_pbgStatus == 'submitted') ...[
           const SizedBox(height: 12),
@@ -1318,7 +1554,43 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         const SizedBox(height: 12),
         if (_workOrderStatus == 'not_issued') ...[
-          _buildTextField(label: 'Reasons', fieldKey: 'Work Order - Reasons'),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(label: 'Reasons', fieldKey: 'Work Order - Reasons'),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: _criticalMarkers['work_order_not_issued']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['work_order_not_issued'] = !_criticalMarkers['work_order_not_issued']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['work_order_not_issued']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['work_order_not_issued']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['work_order_not_issued']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['work_order_not_issued']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
         if (_workOrderStatus == 'issued') ...[
           _buildDateField(label: 'Date', fieldKey: 'Work Order - Date'),
@@ -2079,6 +2351,228 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     );
   }
 
+  Widget _buildCheckboxOptionWithCritical({
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required String criticalKey,
+  }) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: onChanged,
+            ),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: _criticalMarkers[criticalKey]! ? 'Marked as Critical' : 'Mark as Critical',
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _criticalMarkers[criticalKey] = !_criticalMarkers[criticalKey]!;
+                  });
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _criticalMarkers[criticalKey]!
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    _criticalMarkers[criticalKey]! ? Icons.notifications_active : Icons.notifications_outlined,
+                    color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRadioOptionWithCritical({
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required String criticalKey,
+  }) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Radio<bool>(
+              value: true,
+              groupValue: value ? true : false,
+              onChanged: onChanged,
+            ),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: _criticalMarkers[criticalKey]! ? 'Marked as Critical' : 'Mark as Critical',
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _criticalMarkers[criticalKey] = !_criticalMarkers[criticalKey]!;
+                  });
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _criticalMarkers[criticalKey]!
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    _criticalMarkers[criticalKey]! ? Icons.notifications_active : Icons.notifications_outlined,
+                    color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateFieldWithCritical({
+    required String label,
+    String? fieldKey,
+    required String criticalKey,
+  }) {
+    final controllerKey = fieldKey ?? label;
+    final controller = _getController(controllerKey);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Tooltip(
+              message: _criticalMarkers[criticalKey]! ? 'Marked as Critical' : 'Mark as Critical',
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _criticalMarkers[criticalKey] = !_criticalMarkers[criticalKey]!;
+                  });
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _criticalMarkers[criticalKey]!
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    _criticalMarkers[criticalKey]! ? Icons.notifications_active : Icons.notifications_outlined,
+                    color: _criticalMarkers[criticalKey]! ? AppColors.error : AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          readOnly: true,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: AppColors.surface,
+            suffixIcon: const Icon(Icons.calendar_today, size: 18),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (date != null) {
+              controller.text = '${date.day}/${date.month}/${date.year}';
+            }
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusCheckboxes({
     required String status,
     required ValueChanged<String> onChanged,
@@ -2124,7 +2618,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   }
 
   Widget _buildApplicableProposalFields(
-      String status, ValueChanged<String> onChanged, {String section = ''}) {
+      String status, ValueChanged<String> onChanged, {String section = '', String? underPrepCriticalKey, String? submittedDateCriticalKey}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2133,11 +2627,18 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: status == 'not_started',
           onChanged: (val) => onChanged('not_started'),
         ),
-        _buildRadioOption(
-          label: 'Proposal Under Preparation',
-          value: status == 'under_preparation',
-          onChanged: (val) => onChanged('under_preparation'),
-        ),
+        underPrepCriticalKey != null
+            ? _buildRadioOptionWithCritical(
+                label: 'Proposal Under Preparation',
+                value: status == 'under_preparation',
+                onChanged: (val) => onChanged('under_preparation'),
+                criticalKey: underPrepCriticalKey,
+              )
+            : _buildRadioOption(
+                label: 'Proposal Under Preparation',
+                value: status == 'under_preparation',
+                onChanged: (val) => onChanged('under_preparation'),
+              ),
         _buildRadioOption(
           label: 'Proposal Submitted',
           value: status == 'submitted',
@@ -2147,10 +2648,16 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildDateField(
-              label: 'Date',
-              fieldKey: section.isNotEmpty ? '$section - Date' : 'Date',
-            ),
+            child: submittedDateCriticalKey != null
+                ? _buildDateFieldWithCritical(
+                    label: 'Date',
+                    fieldKey: section.isNotEmpty ? '$section - Date' : 'Date',
+                    criticalKey: submittedDateCriticalKey,
+                  )
+                : _buildDateField(
+                    label: 'Date',
+                    fieldKey: section.isNotEmpty ? '$section - Date' : 'Date',
+                  ),
           ),
         ],
         const SizedBox(height: 12),
@@ -2166,25 +2673,28 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildRadioOption(
+        _buildRadioOptionWithCritical(
           label: 'In Progress',
           value: _bidAcceptanceStatus == 'in_progress',
           onChanged: (val) => setState(() => _bidAcceptanceStatus = 'in_progress'),
+          criticalKey: 'bid_accept_in_progress',
         ),
-        _buildRadioOption(
+        _buildRadioOptionWithCritical(
           label: 'Submitted',
           value: _bidAcceptanceStatus == 'submitted',
           onChanged: (val) => setState(() => _bidAcceptanceStatus = 'submitted'),
+          criticalKey: 'bid_accept_submitted',
         ),
         _buildRadioOption(
           label: 'Approved',
           value: _bidAcceptanceStatus == 'approved',
           onChanged: (val) => setState(() => _bidAcceptanceStatus = 'approved'),
         ),
-        _buildRadioOption(
+        _buildRadioOptionWithCritical(
           label: 'Board Approval',
           value: _bidAcceptanceStatus == 'board_approval',
           onChanged: (val) => setState(() => _bidAcceptanceStatus = 'board_approval'),
+          criticalKey: 'bid_accept_board_approval',
         ),
         _buildRadioOption(
           label: 'Accepted',
