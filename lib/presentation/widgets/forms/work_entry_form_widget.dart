@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../theme/app_colors.dart';
+import '../../../data/models/work_entry_data.dart';
+import '../../providers/repository_providers.dart';
 import 'critical_marker_widget.dart';
 import 'dynamic_table_widget.dart';
 
-/// Work Entry Form Widget - Main form container
-class WorkEntryFormWidget extends StatefulWidget {
+/// Work Entry Form Widget - Main form container with database integration
+class WorkEntryFormWidget extends ConsumerStatefulWidget {
   final int projectId;
 
   const WorkEntryFormWidget({
@@ -13,10 +16,13 @@ class WorkEntryFormWidget extends StatefulWidget {
   });
 
   @override
-  State<WorkEntryFormWidget> createState() => _WorkEntryFormWidgetState();
+  ConsumerState<WorkEntryFormWidget> createState() => _WorkEntryFormWidgetState();
 }
 
-class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
+class _WorkEntryFormWidgetState extends ConsumerState<WorkEntryFormWidget> {
+  // Loading state
+  bool _isLoading = true;
+  WorkEntryData? _existingData;
   // Search functionality
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -102,6 +108,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   @override
   void initState() {
     super.initState();
+    _loadData();
     _captureInitialState();
   }
 
@@ -125,6 +132,96 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
       });
     }
     return _textControllers[fieldKey]!;
+  }
+
+  /// Load work entry data from database
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final repository = ref.read(workEntryRepositoryProvider);
+      final data = await repository.getWorkEntryOrDraftByProjectId(widget.projectId);
+
+      if (data != null && mounted) {
+        print('[WorkEntryForm] Loading data for project ${widget.projectId}');
+
+        // Load DPR Section data
+        if (data.dprSection != null) {
+          final dpr = data.dprSection!;
+          _aaStatus = dpr['aa_status'] ?? _aaStatus;
+          _dprStatus = dpr['dpr_status'] ?? _dprStatus;
+          _boqStatus = dpr['boq_status'] ?? _boqStatus;
+          _schedulesStatus = dpr['schedules_status'] ?? _schedulesStatus;
+          _drawingsStatus = dpr['drawings_status'] ?? _drawingsStatus;
+          _bidDocumentsStatus = dpr['bid_documents_status'] ?? _bidDocumentsStatus;
+          _envApplicability = dpr['env_applicability'] ?? _envApplicability;
+          _envProposalStatus = dpr['env_proposal_status'] ?? _envProposalStatus;
+          _laApplicability = dpr['la_applicability'] ?? _laApplicability;
+          _laProposalStatus = dpr['la_proposal_status'] ?? _laProposalStatus;
+          _utilityShiftingApplicability = dpr['utility_shifting_applicability'] ?? _utilityShiftingApplicability;
+          _utilityShiftingProposalStatus = dpr['utility_shifting_proposal_status'] ?? _utilityShiftingProposalStatus;
+
+          // Load all text fields from DPR section
+          dpr.forEach((key, value) {
+            if (value != null && value is String && value.isNotEmpty) {
+              _getController(key).text = value;
+              _initialTextValues[key] = value;
+            }
+          });
+        }
+
+        // Load Work Section data
+        if (data.workSection != null) {
+          final work = data.workSection!;
+          _tsStatus = work['ts_status'] ?? _tsStatus;
+          _tsAwaitedStatus = work['ts_awaited_status'] ?? _tsAwaitedStatus;
+          _nitStatus = work['nit_status'] ?? _nitStatus;
+          _nitIssuedInputMethod = work['nit_issued_input_method'] ?? _nitIssuedInputMethod;
+          _csdStatus = work['csd_status'] ?? _csdStatus;
+          _technicalEvaluationStatus = work['technical_evaluation_status'] ?? _technicalEvaluationStatus;
+          _financialBidOfferType = work['financial_bid_offer_type'] ?? _financialBidOfferType;
+          _bidAcceptanceStatus = work['bid_acceptance_status'] ?? _bidAcceptanceStatus;
+          _loaStatus = work['loa_status'] ?? _loaStatus;
+          _pbgStatus = work['pbg_status'] ?? _pbgStatus;
+          _workOrderStatus = work['work_order_status'] ?? _workOrderStatus;
+          _emdVerificationDone = work['emd_verification_done'] ?? _emdVerificationDone;
+        }
+
+        // Load PMS Section data
+        if (data.pmsSection != null) {
+          final pms = data.pmsSection!;
+          _ldApplicability = pms['ld_applicability'] ?? _ldApplicability;
+          _eotApplicability = pms['eot_applicability'] ?? _eotApplicability;
+          _cosApplicability = pms['cos_applicability'] ?? _cosApplicability;
+          _cosStatus = pms['cos_status'] ?? _cosStatus;
+          _auditParaApplicability = pms['audit_para_applicability'] ?? _auditParaApplicability;
+          _laqApplicability = pms['laq_applicability'] ?? _laqApplicability;
+          _technicalAuditStatus = pms['technical_audit_status'] ?? _technicalAuditStatus;
+          _revAaStatus = pms['rev_aa_status'] ?? _revAaStatus;
+          _revAaProgressStatus = pms['rev_aa_progress_status'] ?? _revAaProgressStatus;
+          _supplementaryAgreementApplicability = pms['supplementary_agreement_applicability'] ?? _supplementaryAgreementApplicability;
+
+          // Load EOT options
+          if (pms['eot_options'] != null) {
+            _eotOptions = Set<String>.from(pms['eot_options'] as List);
+          }
+        }
+
+        setState(() {
+          _existingData = data;
+        });
+
+        print('[WorkEntryForm] Data loaded successfully');
+      } else {
+        print('[WorkEntryForm] No existing data found for project ${widget.projectId}');
+      }
+    } catch (e) {
+      print('[WorkEntryForm] Error loading data: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   /// Captures the initial state of all form fields
@@ -816,22 +913,112 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     );
   }
 
-  /// Handles the submission of changes
-  void _submitChanges() {
-    // TODO: Implement actual submission logic
-    // For now, just update the initial state to the current state
-    _captureInitialState();
+  /// Handles the submission of changes - SAVES TO DATABASE
+  Future<void> _submitChanges() async {
+    print('[WorkEntryForm] === SUBMIT CHANGES CALLED ===');
+    print('[WorkEntryForm] Project ID: ${widget.projectId}');
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Changes submitted successfully!'),
-        backgroundColor: AppColors.success,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    try {
+      final repository = ref.read(workEntryRepositoryProvider);
 
-    setState(() {}); // Refresh to hide submit button
+      // Create work entry data object
+      final workEntryData = WorkEntryData(
+        id: _existingData?.id,
+        projectId: widget.projectId,
+        workId: null,
+        nameOfWork: null,
+        personResponsible: null,
+        postHeld: null,
+        pendingWith: null,
+        dprSection: {
+          // Map all DPR fields to JSON
+          'aa_status': _aaStatus,
+          'dpr_status': _dprStatus,
+          'boq_status': _boqStatus,
+          'schedules_status': _schedulesStatus,
+          'drawings_status': _drawingsStatus,
+          'bid_documents_status': _bidDocumentsStatus,
+          'env_applicability': _envApplicability,
+          'env_proposal_status': _envProposalStatus,
+          'la_applicability': _laApplicability,
+          'la_proposal_status': _laProposalStatus,
+          'utility_shifting_applicability': _utilityShiftingApplicability,
+          'utility_shifting_proposal_status': _utilityShiftingProposalStatus,
+          // Add all text field values
+          ..._textControllers.map((key, controller) => MapEntry(key, controller.text)),
+        },
+        workSection: {
+          // Map all Work fields to JSON
+          'ts_status': _tsStatus,
+          'ts_awaited_status': _tsAwaitedStatus,
+          'nit_status': _nitStatus,
+          'nit_issued_input_method': _nitIssuedInputMethod,
+          'csd_status': _csdStatus,
+          'technical_evaluation_status': _technicalEvaluationStatus,
+          'financial_bid_offer_type': _financialBidOfferType,
+          'bid_acceptance_status': _bidAcceptanceStatus,
+          'loa_status': _loaStatus,
+          'pbg_status': _pbgStatus,
+          'work_order_status': _workOrderStatus,
+          'emd_verification_done': _emdVerificationDone,
+        },
+        pmsSection: {
+          // Map all PMS fields to JSON
+          'ld_applicability': _ldApplicability,
+          'eot_applicability': _eotApplicability,
+          'eot_options': _eotOptions.toList(),
+          'cos_applicability': _cosApplicability,
+          'cos_status': _cosStatus,
+          'audit_para_applicability': _auditParaApplicability,
+          'laq_applicability': _laqApplicability,
+          'technical_audit_status': _technicalAuditStatus,
+          'rev_aa_status': _revAaStatus,
+          'rev_aa_progress_status': _revAaProgressStatus,
+          'supplementary_agreement_applicability': _supplementaryAgreementApplicability,
+        },
+        isDraft: true, // Always save as draft
+      );
+
+      // Save to database
+      print('[WorkEntryForm] Saving draft - ID: ${workEntryData.id}, isDraft: ${workEntryData.isDraft}');
+      print('[WorkEntryForm] DPR fields: ${workEntryData.dprSection?.keys.length ?? 0}');
+      print('[WorkEntryForm] Work fields: ${workEntryData.workSection?.keys.length ?? 0}');
+      print('[WorkEntryForm] PMS fields: ${workEntryData.pmsSection?.keys.length ?? 0}');
+
+      await repository.saveDraft(workEntryData);
+
+      print('[WorkEntryForm] ✅ Draft saved successfully!');
+
+      // Reload data to get the new ID
+      await _loadData();
+
+      // Update initial state to current state
+      _captureInitialState();
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Changes saved successfully!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      setState(() {}); // Refresh to hide submit button
+    } catch (e) {
+      print('[WorkEntryForm] Error saving data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving changes: $e'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   bool _matchesSearch(String title) {
@@ -2155,6 +2342,13 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while data is being loaded
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     final hasChanges = _hasChanges();
     final changesCount = hasChanges ? _getChanges().length : 0;
 

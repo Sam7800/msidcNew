@@ -1,27 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/constants.dart';
-import '../../core/services/logger_service.dart';
-import '../../core/database/database_helper.dart';
-import '../providers/auth_provider.dart';
 import 'login_screen.dart';
-import 'categories_screen.dart';
 
-/// Splash Screen - Initial loading screen
-///
-/// Responsibilities:
-/// - Initialize database
-/// - Check if data needs to be imported
-/// - Navigate to appropriate screen
-class SplashScreen extends ConsumerStatefulWidget {
+/// Splash Screen - Initial loading screen with animations
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen>
+class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -53,64 +43,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _animationController.forward();
 
-    // Initialize app
-    _initializeApp();
+    // Navigate to login screen after delay
+    _navigateToLogin();
   }
 
-  Future<void> _initializeApp() async {
-    final logger = LoggerService.instance;
-
-    try {
-      await logger.info('SplashScreen', 'Starting application initialization');
-
-      // Step 1: Initialize logger
-      await logger.initialize();
-      await logger.info('SplashScreen', 'Logger initialized');
-
-      // Step 2: Initialize database
-      await logger.info('SplashScreen', 'Initializing database');
-      final db = await DatabaseHelper.instance.database;
-      await logger.info('SplashScreen', 'Database initialized successfully');
-
-      // Step 3: Wait for animation to complete
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Step 4: Check authentication status
-      await logger.info('SplashScreen', 'Checking authentication status');
-      final authState = ref.read(authProvider);
-      await logger.info('SplashScreen', 'Authentication status: ${authState.isAuthenticated}');
-
-      if (mounted) {
-        // Navigate to appropriate screen
-        if (authState.isAuthenticated) {
-          // Already logged in, go to categories
-          await logger.info('SplashScreen', 'Navigating to Categories Screen');
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const CategoriesScreen(),
-            ),
-          );
-        } else {
-          // Not logged in, go to login
-          await logger.info('SplashScreen', 'Navigating to Login Screen');
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const LoginScreen(),
-            ),
-          );
-        }
-      }
-    } catch (e, stackTrace) {
-      await logger.error('SplashScreen', 'Initialization failed', e, stackTrace);
-      if (mounted) {
-        // On error, navigate to login
-        await logger.warning('SplashScreen', 'Navigating to Login Screen due to error');
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
-          ),
-        );
-      }
+  Future<void> _navigateToLogin() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+      );
     }
   }
 

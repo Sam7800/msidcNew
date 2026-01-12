@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/constants.dart';
-import '../../utils/component_status_utils.dart';
 import '../../data/models/project.dart';
 import '../../data/models/category.dart';
-import '../providers/project_provider.dart';
-import '../providers/review_providers.dart';
-import '../widgets/dialogs/create_project_dialog.dart';
-import 'new_project_detail_screen.dart';
-import 'critical_subsections_screen.dart';
+import '../providers/mock_data.dart';
+import 'project_detail_screen.dart';
+import 'critical_items_screen.dart';
 
 /// Projects Screen - Shows projects within a selected category
-///
-/// Navigation: Categories → Projects (HERE) → Details
-class ProjectsScreen extends ConsumerStatefulWidget {
+class ProjectsScreen extends StatefulWidget {
   final Category category;
 
   const ProjectsScreen({
@@ -23,24 +17,18 @@ class ProjectsScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
+  State<ProjectsScreen> createState() => _ProjectsScreenState();
 }
 
-class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
+class _ProjectsScreenState extends State<ProjectsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  late List<Project> _projects;
 
   @override
   void initState() {
     super.initState();
-    // Load projects for this category
-    Future.microtask(() {
-      if (widget.category.id != null) {
-        ref
-            .read(projectProvider.notifier)
-            .loadProjectsByCategoryId(widget.category.id!);
-      }
-    });
+    _projects = MockData.getProjectsByCategory(widget.category.id);
   }
 
   @override
@@ -49,28 +37,16 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     super.dispose();
   }
 
-  Future<void> _handleCreateProject() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => CreateProjectDialog(
-        preselectedCategory: widget.category,
-      ),
-    );
-
-    if (result == true && mounted) {
-      // Refresh projects
-      if (widget.category.id != null) {
-        ref
-            .read(projectProvider.notifier)
-            .loadProjectsByCategoryId(widget.category.id!);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final projectState = ref.watch(projectProvider);
     final categoryColor = widget.category.getColor();
+
+    // Filter projects based on search
+    final filteredProjects = _searchQuery.isEmpty
+        ? _projects
+        : _projects
+            .where((p) => p.name.toLowerCase().contains(_searchQuery))
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -85,7 +61,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         ),
         title: Row(
           children: [
-            // Category icon - small, functional
             Container(
               width: 32,
               height: 32,
@@ -104,7 +79,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            // Category name - left aligned
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,13 +109,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ],
         ),
         actions: [
-          // Properly sized action icons (24px)
-          IconButton(
-            icon: const Icon(Icons.add, size: 24),
-            tooltip: 'Create Project',
-            onPressed: _handleCreateProject,
-            color: AppColors.textPrimary,
-          ),
           IconButton(
             icon: const Icon(Icons.error, size: 24),
             tooltip: 'View Critical Items',
@@ -149,23 +116,21 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CriticalSubsectionsScreen(
+                  builder: (context) => CriticalItemsScreen(
                     categoryId: widget.category.id,
                   ),
                 ),
               );
             },
-            color: const Color(0xFFEF4444), // Red for critical
+            color: const Color(0xFFEF4444),
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 24),
             tooltip: Constants.tooltipRefresh,
             onPressed: () {
-              if (widget.category.id != null) {
-                ref
-                    .read(projectProvider.notifier)
-                    .loadProjectsByCategoryId(widget.category.id!);
-              }
+              setState(() {
+                _projects = MockData.getProjectsByCategory(widget.category.id);
+              });
             },
             color: AppColors.textPrimary,
           ),
@@ -185,240 +150,161 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ),
         ),
       ),
-      body: projectState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : projectState.error != null
-              ? Center(
+      body: Column(
+        children: [
+          // Compact header with search
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Row(
+              children: [
+                Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppColors.error,
-                      ),
-                      const SizedBox(height: 16),
                       Text(
-                        projectState.error!,
-                        style: const TextStyle(color: AppColors.error),
-                        textAlign: TextAlign.center,
+                        'Projects',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                            ),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (widget.category.id != null) {
-                            ref
-                                .read(projectProvider.notifier)
-                                .loadProjectsByCategoryId(widget.category.id!);
-                          }
-                        },
-                        child: const Text('Retry'),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${filteredProjects.length} projects in this category',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
                       ),
                     ],
                   ),
-                )
-              : Column(
-                  children: [
-                    // Compact header with search - Claude.com style
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-                      child: Row(
-                        children: [
-                          // Title and count - compact
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Projects',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                        color: AppColors.textPrimary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 18,
-                                      ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${projectState.projects.where((p) => _searchQuery.isEmpty || p.name.toLowerCase().contains(_searchQuery)).length} projects in this category',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          // Search bar - integrated
-                          SizedBox(
-                            width: 320,
-                            height: 40,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 1,
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _searchQuery = value.toLowerCase();
-                                  });
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Search projects...',
-                                  hintStyle: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textTertiary,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    size: 20,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(
-                                            Icons.clear,
-                                            size: 18,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {
-                                              _searchQuery = '';
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                ),
+                const SizedBox(width: 24),
+                SizedBox(
+                  width: 320,
+                  height: 40,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1,
                       ),
                     ),
-
-                    // Projects Grid
-                    Expanded(
-                      child: projectState.projects.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.folder_open,
-                                    size: 64,
-                                    color: AppColors.textTertiary,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No projects found',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No projects in this category yet',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                          color: AppColors.textTertiary,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Builder(
-                              builder: (context) {
-                                // Filter projects based on search
-                                final filteredProjects = projectState.projects
-                                    .where((p) =>
-                                        _searchQuery.isEmpty ||
-                                        p.name.toLowerCase().contains(_searchQuery))
-                                    .toList();
-
-                                // Show empty state if search has no results
-                                if (filteredProjects.isEmpty) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.search_off,
-                                          size: 64,
-                                          color: AppColors.textTertiary,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'No projects found',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Try a different search term',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color: AppColors.textTertiary,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-
-                                return ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                                  itemCount: filteredProjects.length,
-                                  itemBuilder: (context, index) {
-                                    final project = filteredProjects[index];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
-                                      child: _ProjectListItem(
-                                        project: project,
-                                        categoryColor: categoryColor,
-                                        categoryIcon: widget.category.getIcon(),
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => NewProjectDetailScreen(
-                                                project: project,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.toLowerCase();
+                        });
+                      },
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search projects...',
+                        hintStyle: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textTertiary,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
+          ),
+
+          // Projects List
+          Expanded(
+            child: filteredProjects.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _searchQuery.isEmpty
+                              ? Icons.folder_open
+                              : Icons.search_off,
+                          size: 64,
+                          color: AppColors.textTertiary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No projects found',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _searchQuery.isEmpty
+                              ? 'No projects in this category yet'
+                              : 'Try a different search term',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                    itemCount: filteredProjects.length,
+                    itemBuilder: (context, index) {
+                      final project = filteredProjects[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ProjectListItem(
+                          project: project,
+                          categoryColor: categoryColor,
+                          categoryIcon: widget.category.getIcon(),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProjectDetailScreen(
+                                  project: project,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -454,9 +340,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isHovered
-                ? widget.categoryColor
-                : AppColors.border,
+            color: _isHovered ? widget.categoryColor : AppColors.border,
             width: _isHovered ? 1.5 : 1,
           ),
           boxShadow: _isHovered
@@ -520,7 +404,8 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (widget.project.broadScope != null && widget.project.broadScope!.isNotEmpty) ...[
+                        if (widget.project.broadScope != null &&
+                            widget.project.broadScope!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             widget.project.broadScope!,
@@ -538,11 +423,6 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                   ),
 
                   const SizedBox(width: 16),
-
-                  // Critical Tasks Badge
-                  _CriticalTasksBadge(projectId: widget.project.id!),
-
-                  const SizedBox(width: 12),
 
                   // Category Icon Badge
                   Container(
@@ -579,162 +459,6 @@ class _ProjectListItemState extends State<_ProjectListItem> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Critical Tasks Badge Widget
-/// Shows count of critical tasks and displays them in a dropdown
-class _CriticalTasksBadge extends ConsumerWidget {
-  final int projectId;
-
-  const _CriticalTasksBadge({required this.projectId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final workEntryAsync = ref.watch(workEntryDataProvider(projectId));
-
-    return workEntryAsync.when(
-      data: (workEntry) {
-        if (workEntry == null) return const SizedBox.shrink();
-
-        final criticalCount = ComponentStatusUtils.countCriticalTasks(
-          workEntry.dprSection,
-          workEntry.workSection,
-          workEntry.pmsSection,
-        );
-
-        if (criticalCount == 0) return const SizedBox.shrink();
-
-        return PopupMenuButton<void>(
-          tooltip: 'View $criticalCount critical task${criticalCount > 1 ? 's' : ''}',
-          offset: const Offset(0, 40),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          itemBuilder: (context) {
-            final criticalTasks = <PopupMenuEntry<void>>[];
-
-            // Add header
-            criticalTasks.add(
-              PopupMenuItem<void>(
-                enabled: false,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.warning_rounded,
-                      color: AppColors.error,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Critical Tasks ($criticalCount)',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-
-            criticalTasks.add(const PopupMenuDivider());
-
-            // Add critical task items from all sections
-            void addCriticalTasksFromSection(
-                Map<String, dynamic>? section, String sectionName) {
-              if (section == null) return;
-
-              section.forEach((key, value) {
-                if (value != null &&
-                    ComponentStatusUtils.isCriticalStatus(value.toString())) {
-                  criticalTasks.add(
-                    PopupMenuItem<void>(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.error,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  key.replaceAll('_', ' ').toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ComponentStatusUtils.formatStatus(
-                                      value.toString()),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.error,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-              });
-            }
-
-            addCriticalTasksFromSection(workEntry.dprSection, 'DPR');
-            addCriticalTasksFromSection(workEntry.workSection, 'Work');
-            addCriticalTasksFromSection(workEntry.pmsSection, 'PMS');
-
-            return criticalTasks;
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.error.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppColors.error.withOpacity(0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.warning_rounded,
-                  size: 16,
-                  color: AppColors.error,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  criticalCount.toString(),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.error,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

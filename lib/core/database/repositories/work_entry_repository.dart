@@ -116,7 +116,7 @@ class WorkEntryRepository {
     }
   }
 
-  /// Save draft
+  /// Save draft - properly handles both INSERT and UPDATE
   Future<int> saveDraft(WorkEntryData workEntry) async {
     try {
       await _logger.info('WorkEntryRepo', 'Saving draft for project ${workEntry.projectId}');
@@ -125,21 +125,39 @@ class WorkEntryRepository {
       final draft = workEntry.copyWith(isDraft: true);
       final db = await _dbHelper.database;
 
-      // Delete existing draft for this project
-      final deletedCount = await db.delete(
-        'work_entry',
-        where: 'project_id = ? AND is_draft = 1',
-        whereArgs: [workEntry.projectId],
-      );
-      await _logger.info('WorkEntryRepo', 'Deleted $deletedCount existing drafts');
+      // Check if draft already exists for this project
+      final existing = await getDraftByProjectId(workEntry.projectId);
 
-      // Insert new draft
-      final id = await db.insert(
-        'work_entry',
-        draft.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await _logger.info('WorkEntryRepo', 'Draft saved successfully with ID: $id');
+      int id;
+      if (existing != null) {
+        // UPDATE existing draft
+        await _logger.info('WorkEntryRepo', 'Updating existing draft (ID: ${existing.id})');
+        final draftMap = draft.toMap();
+        draftMap['id'] = existing.id; // Keep the same ID
+        draftMap['updated_at'] = DateTime.now().toIso8601String(); // Update timestamp
+
+        await db.update(
+          'work_entry',
+          draftMap,
+          where: 'id = ?',
+          whereArgs: [existing.id],
+        );
+        id = existing.id!;
+        await _logger.info('WorkEntryRepo', 'Draft UPDATED successfully with ID: $id');
+      } else {
+        // INSERT new draft
+        await _logger.info('WorkEntryRepo', 'Inserting new draft');
+        final draftMap = draft.toMap();
+        draftMap.remove('id'); // Remove ID for insert (let SQLite auto-generate)
+
+        id = await db.insert(
+          'work_entry',
+          draftMap,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await _logger.info('WorkEntryRepo', 'Draft INSERTED successfully with ID: $id');
+      }
+
       return id;
     } catch (e) {
       await _logger.error('WorkEntryRepo', 'Failed to save draft', e);

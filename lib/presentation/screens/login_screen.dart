@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/constants.dart';
-import '../providers/auth_provider.dart';
 import 'categories_screen.dart';
 
 /// Login Screen - Simple authentication (admin/admin)
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,39 +28,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      final success = await ref.read(authProvider.notifier).login(
-            _usernameController.text,
-            _passwordController.text,
-          );
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
 
-      if (success && mounted) {
+      // Simulate API call delay
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Check credentials
+      if (_usernameController.text == Constants.defaultUsername &&
+          _passwordController.text == Constants.defaultPassword) {
         // Navigate to categories screen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const CategoriesScreen(),
-          ),
-        );
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const CategoriesScreen(),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Invalid username or password';
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-
-    // Show error if any
-    if (authState.error != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authState.error!),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        ref.read(authProvider.notifier).clearError();
-      });
-    }
-
     return Scaffold(
       body: Container(
         color: AppColors.background,
@@ -106,25 +103,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // Title
                         Text(
                           Constants.appName,
-                          style: Theme.of(context)
-                              .textTheme.headlineLarge
-                              ?.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
 
                         const SizedBox(height: 8),
 
                         Text(
                           'Project Management System',
-                          style:
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
                         ),
 
                         const SizedBox(height: 40),
+
+                        // Error message
+                        if (_errorMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.error.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
 
                         // Username field
                         TextFormField(
@@ -182,12 +211,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: authState.isLoading ? null : _handleLogin,
+                            onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                             ),
-                            child: authState.isLoading
+                            child: _isLoading
                                 ? const SizedBox(
                                     width: 24,
                                     height: 24,
@@ -240,10 +269,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // Version
                         Text(
                           'Version ${Constants.appVersion}',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textDisabled,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textDisabled,
+                              ),
                         ),
                       ],
                     ),
