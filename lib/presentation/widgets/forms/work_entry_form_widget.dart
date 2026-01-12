@@ -5,7 +5,12 @@ import 'dynamic_table_widget.dart';
 
 /// Work Entry Form Widget - Main form container
 class WorkEntryFormWidget extends StatefulWidget {
-  const WorkEntryFormWidget({super.key});
+  final int projectId;
+
+  const WorkEntryFormWidget({
+    super.key,
+    required this.projectId,
+  });
 
   @override
   State<WorkEntryFormWidget> createState() => _WorkEntryFormWidgetState();

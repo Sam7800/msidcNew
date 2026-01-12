@@ -48,7 +48,7 @@ class DatabaseHelper {
 
       final db = await openDatabase(
         path,
-        version: 5,
+        version: 6,
         onCreate: _createDB,
         onConfigure: _onConfigure,
         onUpgrade: _upgradeDB,
@@ -87,6 +87,10 @@ class DatabaseHelper {
 
     if (oldVersion < 5) {
       await _migrateV4ToV5(db);
+    }
+
+    if (oldVersion < 6) {
+      await _migrateV5ToV6(db);
     }
 
     await _logger.database('UPGRADE', 'Database upgrade completed successfully');
@@ -334,6 +338,80 @@ class DatabaseHelper {
     }
   }
 
+  /// Migrate from version 5 to version 6
+  /// - Creates work_entry_attachments table for file attachment support
+  /// - Adds enhanced indexes to work_entry table
+  Future<void> _migrateV5ToV6(Database db) async {
+    await _logger.database('MIGRATION', 'Starting v5→v6 migration');
+
+    try {
+      // Check if work_entry_attachments table already exists
+      final tableExists = await _tableExists(db, 'work_entry_attachments');
+      if (!tableExists) {
+        await _logger.database('MIGRATION', 'Creating work_entry_attachments table');
+
+        // Create work_entry_attachments table
+        await db.execute('''
+          CREATE TABLE work_entry_attachments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            work_entry_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            category TEXT NOT NULL CHECK(category IN ('DPR', 'Work', 'PMS')),
+            subsection_name TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_type TEXT NOT NULL CHECK(file_type IN ('JPEG', 'PNG', 'PDF')),
+            file_size_bytes INTEGER NOT NULL,
+            mime_type TEXT NOT NULL,
+            uploaded_by TEXT DEFAULT 'admin',
+            uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (work_entry_id) REFERENCES work_entry(id) ON DELETE CASCADE,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            UNIQUE(work_entry_id, category, subsection_name)
+          )
+        ''');
+
+        // Create indexes for work_entry_attachments
+        await db.execute(
+            'CREATE INDEX idx_attachments_work_entry ON work_entry_attachments(work_entry_id)');
+        await db.execute(
+            'CREATE INDEX idx_attachments_project ON work_entry_attachments(project_id)');
+        await db.execute(
+            'CREATE INDEX idx_attachments_category ON work_entry_attachments(category)');
+        await db.execute(
+            'CREATE INDEX idx_attachments_subsection ON work_entry_attachments(category, subsection_name)');
+        await db.execute(
+            'CREATE INDEX idx_attachments_uploaded ON work_entry_attachments(uploaded_at DESC)');
+
+        // Create trigger for auto-updating timestamp
+        await db.execute('''
+          CREATE TRIGGER update_attachments_timestamp
+          AFTER UPDATE ON work_entry_attachments
+          BEGIN
+            UPDATE work_entry_attachments SET uploaded_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+          END
+        ''');
+
+        await _logger.database('MIGRATION', 'work_entry_attachments table created successfully');
+      } else {
+        await _logger.database('MIGRATION', 'work_entry_attachments table already exists, skipping');
+      }
+
+      // Add enhanced indexes to work_entry table (non-destructive)
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_work_entry_project_draft ON work_entry(project_id, is_draft)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_work_entry_work_id ON work_entry(work_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_work_entry_updated ON work_entry(updated_at DESC)');
+
+      await _logger.database('MIGRATION', 'v5→v6 migration completed successfully');
+    } catch (e, stackTrace) {
+      await _logger.database('MIGRATION', 'Migration error', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
   /// Create all tables and triggers
   Future<void> _createDB(Database db, int version) async {
     await _logger.database('CREATE', 'Creating database schema version $version');
@@ -525,8 +603,48 @@ class DatabaseHelper {
         'CREATE INDEX idx_work_entry_project ON work_entry(project_id)');
     await db.execute(
         'CREATE INDEX idx_work_entry_draft ON work_entry(is_draft)');
+    // Enhanced indexes for better performance (new in v6)
+    await db.execute(
+        'CREATE INDEX idx_work_entry_project_draft ON work_entry(project_id, is_draft)');
+    await db.execute(
+        'CREATE INDEX idx_work_entry_work_id ON work_entry(work_id)');
+    await db.execute(
+        'CREATE INDEX idx_work_entry_updated ON work_entry(updated_at DESC)');
 
-    // Table 7: Critical Subsections (new in v5)
+    // Table 7: Work Entry Attachments (new in v6)
+    await _logger.database('CREATE', 'Creating work_entry_attachments table');
+    await db.execute('''
+      CREATE TABLE work_entry_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        work_entry_id INTEGER NOT NULL,
+        project_id INTEGER NOT NULL,
+        category TEXT NOT NULL CHECK(category IN ('DPR', 'Work', 'PMS')),
+        subsection_name TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_type TEXT NOT NULL CHECK(file_type IN ('JPEG', 'PNG', 'PDF')),
+        file_size_bytes INTEGER NOT NULL,
+        mime_type TEXT NOT NULL,
+        uploaded_by TEXT DEFAULT 'admin',
+        uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (work_entry_id) REFERENCES work_entry(id) ON DELETE CASCADE,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        UNIQUE(work_entry_id, category, subsection_name)
+      )
+    ''');
+
+    await db.execute(
+        'CREATE INDEX idx_attachments_work_entry ON work_entry_attachments(work_entry_id)');
+    await db.execute(
+        'CREATE INDEX idx_attachments_project ON work_entry_attachments(project_id)');
+    await db.execute(
+        'CREATE INDEX idx_attachments_category ON work_entry_attachments(category)');
+    await db.execute(
+        'CREATE INDEX idx_attachments_subsection ON work_entry_attachments(category, subsection_name)');
+    await db.execute(
+        'CREATE INDEX idx_attachments_uploaded ON work_entry_attachments(uploaded_at DESC)');
+
+    // Table 8: Critical Subsections (new in v5)
     await _logger.database('CREATE', 'Creating critical_subsections table');
     await db.execute('''
       CREATE TABLE critical_subsections (
@@ -545,7 +663,7 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_critical_category ON critical_subsections(category)');
 
-    // Table 8: Import Logs
+    // Table 9: Import Logs
     await _logger.database('CREATE', 'Creating import_logs table');
     await db.execute('''
       CREATE TABLE import_logs (
@@ -566,7 +684,7 @@ class DatabaseHelper {
     await db.execute(
         'CREATE INDEX idx_import_logs_date ON import_logs(imported_at)');
 
-    // Table 9: Audit Log
+    // Table 10: Audit Log
     await _logger.database('CREATE', 'Creating audit_log table');
     await db.execute('''
       CREATE TABLE audit_log (
@@ -647,6 +765,15 @@ class DatabaseHelper {
       AFTER UPDATE ON work_entry
       BEGIN
         UPDATE work_entry SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+      END
+    ''');
+
+    // Work entry attachments trigger (new in v6)
+    await db.execute('''
+      CREATE TRIGGER update_attachments_timestamp
+      AFTER UPDATE ON work_entry_attachments
+      BEGIN
+        UPDATE work_entry_attachments SET uploaded_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
       END
     ''');
   }

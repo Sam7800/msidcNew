@@ -7,6 +7,7 @@ import '../../core/database/repositories/work_repository.dart';
 import '../../core/database/repositories/monitoring_repository.dart';
 import '../../core/database/repositories/work_entry_repository.dart';
 import '../../core/database/repositories/critical_subsections_repository.dart';
+import '../../core/database/repositories/work_entry_attachment_repository.dart';
 
 /// Database Helper Provider (Singleton)
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
@@ -53,4 +54,10 @@ final workEntryRepositoryProvider = Provider<WorkEntryRepository>((ref) {
 final criticalSubsectionsRepositoryProvider = Provider<CriticalSubsectionsRepository>((ref) {
   final dbHelper = ref.watch(databaseHelperProvider);
   return CriticalSubsectionsRepository(dbHelper);
+});
+
+/// Work Entry Attachment Repository Provider
+final workEntryAttachmentRepositoryProvider = Provider<WorkEntryAttachmentRepository>((ref) {
+  final dbHelper = ref.watch(databaseHelperProvider);
+  return WorkEntryAttachmentRepository(dbHelper);
 });
