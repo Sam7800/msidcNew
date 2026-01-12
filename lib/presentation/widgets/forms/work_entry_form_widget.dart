@@ -1242,9 +1242,9 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
       children: [
         _buildDateField(label: 'Date', fieldKey: 'Pre-bid - Date'),
         const SizedBox(height: 12),
-        _buildTextField(label: 'No. of Bidders Participated'),
+        _buildTextField(label: 'Number of Bidders Participated'),
         const SizedBox(height: 12),
-        _buildTextField(label: '# of Written Applications Submitted'),
+        _buildTextField(label: 'Number of Written Applications Submitted'),
       ],
     ));
 
@@ -1292,7 +1292,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
       children: [
         _buildDateField(label: 'Date', fieldKey: 'Bid Submission - Date'),
         const SizedBox(height: 12),
-        _buildTextField(label: '# of Bidders Tendered'),
+        _buildTextField(label: 'Number of Bidders Tendered'),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -1344,7 +1344,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(left: 32),
-            child: _buildTextField(label: '# of Bidders Qualified'),
+            child: _buildTextField(label: 'Number of Bidders Qualified'),
           ),
         ],
         _buildCheckboxOption(
@@ -1390,7 +1390,13 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         const SizedBox(height: 12),
         _buildTextField(label: 'Offer Amount (Rs. Lakhs/Cr)'),
         const SizedBox(height: 12),
-        _buildTextField(label: '% Above/Below'),
+        _buildTextField(label: 'Percentage (%)'),
+        const SizedBox(height: 12),
+        _buildRadioGroup(
+          value: 'above',
+          options: const {'above': 'Above', 'below': 'Below'},
+          onChanged: (value) {},
+        ),
       ],
     ));
 
@@ -1597,7 +1603,13 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Amount'),
           const SizedBox(height: 12),
-          _buildTextField(label: '% Above/Below'),
+          _buildTextField(label: 'Percentage (%)'),
+          const SizedBox(height: 12),
+          _buildRadioGroup(
+            value: 'above',
+            options: const {'above': 'Above', 'below': 'Below'},
+            onChanged: (value) {},
+          ),
           const SizedBox(height: 12),
           _buildTextField(label: 'Tender Period'),
           const SizedBox(height: 12),
@@ -1613,7 +1625,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
     addSection('22. Appointed Date', _buildDateField(label: 'Date', fieldKey: 'Appointed Date - Date'));
 
     // 23. Tender Period
-    addSection('23. Tender Period', _buildTextField(label: '# of Months'));
+    addSection('23. Tender Period', _buildTextField(label: 'Number of Months'));
 
     // 24. Milestones (MS-I to MS-V)
     addSection('24. Milestones (MS-I to MS-V)', Column(
@@ -1718,20 +1730,60 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           ),
           const SizedBox(height: 12),
           if (_cosStatus == 'under_consideration') ...[
-            _buildTablePlaceholder(
-              rows: 3,
-              columns: 4,
-              title: 'Proposal Details',
+            Row(
+              children: [
+                Expanded(
+                  child: DynamicTableWidget(
+                    title: 'Proposal Under Consideration',
+                    columnHeaders: const ['Sr No', 'Item Description', 'Amount (Rs.)', 'Remarks'],
+                    initialRows: 1,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: _criticalMarkers['cos_under_consideration']! ? 'Marked as Critical' : 'Mark as Critical',
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _criticalMarkers['cos_under_consideration'] = !_criticalMarkers['cos_under_consideration']!;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _criticalMarkers['cos_under_consideration']!
+                            ? AppColors.error.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _criticalMarkers['cos_under_consideration']! ? AppColors.error : AppColors.border,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        _criticalMarkers['cos_under_consideration']! ? Icons.notifications_active : Icons.notifications_outlined,
+                        color: _criticalMarkers['cos_under_consideration']! ? AppColors.error : AppColors.textSecondary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
           if (_cosStatus == 'submitted') ...[
-            _buildDateField(label: 'Date', fieldKey: 'COS - Date'),
+            _buildDateFieldWithCritical(
+              label: 'Date',
+              fieldKey: 'COS - Date',
+              criticalKey: 'cos_submitted_date',
+            ),
           ],
           if (_cosStatus == 'approved') ...[
-            _buildTablePlaceholder(
-              rows: 3,
-              columns: 7,
+            DynamicTableWidget(
               title: 'Approved Proposal Details',
+              columnHeaders: const ['Sr No', 'Item', 'Quantity', 'Rate', 'Amount', 'Status', 'Remarks'],
+              initialRows: 1,
             ),
           ],
         ],
@@ -1770,26 +1822,62 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         if (_auditParaApplicability == 'applicable') ...[
           const SizedBox(height: 16),
-          _buildTextField(label: '# of Draft Paras'),
+          _buildTextField(label: 'Number of Draft Paras'),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
+          DynamicTableWidget(
             title: 'Details of Paras',
+            columnHeaders: const ['Sr No', 'Para Short Description', 'Date of Issue', 'Remarks'],
+            initialRows: 1,
           ),
           const SizedBox(height: 12),
           _buildTextField(label: 'Responsible Person for Replies'),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
-            title: 'Replies Submitted (# and Dates)',
+          Row(
+            children: [
+              Expanded(
+                child: DynamicTableWidget(
+                  title: 'Replies Submitted (Number and Dates)',
+                  columnHeaders: const ['Sr No', 'Reply Description', 'Date', 'Remarks'],
+                  initialRows: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: _criticalMarkers['audit_para_replies_submitted']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['audit_para_replies_submitted'] = !_criticalMarkers['audit_para_replies_submitted']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['audit_para_replies_submitted']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['audit_para_replies_submitted']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['audit_para_replies_submitted']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['audit_para_replies_submitted']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
+          DynamicTableWidget(
             title: 'Paras Closed',
+            columnHeaders: const ['Sr No', 'Para Description', 'Closure Date', 'Remarks'],
+            initialRows: 1,
           ),
         ],
       ],
@@ -1811,44 +1899,80 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildTextField(label: '# of LAQs')),
+              Expanded(child: _buildTextField(label: 'Number of LAQs')),
               const SizedBox(width: 12),
-              Expanded(child: _buildTextField(label: '# of LCQs')),
+              Expanded(child: _buildTextField(label: 'Number of LCQs')),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildTextField(label: '# of Lakshvwdhi')),
+              Expanded(child: _buildTextField(label: 'Number of Lakshvwdhi')),
               const SizedBox(width: 12),
-              Expanded(child: _buildTextField(label: '# of Others')),
+              Expanded(child: _buildTextField(label: 'Number of Others')),
             ],
           ),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
-            title: 'Details of Questions',
+          Row(
+            children: [
+              Expanded(
+                child: DynamicTableWidget(
+                  title: 'Details of Questions',
+                  columnHeaders: const ['Sr No', 'LAQ/LCQ Number', 'Date of Question', 'Remarks'],
+                  initialRows: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: _criticalMarkers['laq_details_questions']! ? 'Marked as Critical' : 'Mark as Critical',
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _criticalMarkers['laq_details_questions'] = !_criticalMarkers['laq_details_questions']!;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _criticalMarkers['laq_details_questions']!
+                          ? AppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _criticalMarkers['laq_details_questions']! ? AppColors.error : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      _criticalMarkers['laq_details_questions']! ? Icons.notifications_active : Icons.notifications_outlined,
+                      color: _criticalMarkers['laq_details_questions']! ? AppColors.error : AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           _buildTextField(label: 'Responsible Person for Replies'),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
-            title: 'Replies Submitted (# and Dates)',
+          DynamicTableWidget(
+            title: 'Replies Submitted (Number and Dates)',
+            columnHeaders: const ['Sr No', 'Reply Description', 'Date', 'Remarks'],
+            initialRows: 1,
           ),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 4,
+          DynamicTableWidget(
             title: 'Promises Given by Hon Minister/s',
+            columnHeaders: const ['Sr No', 'Promise Description', 'Date', 'Remarks'],
+            initialRows: 1,
           ),
           const SizedBox(height: 12),
-          _buildTablePlaceholder(
-            rows: 3,
-            columns: 5,
+          DynamicTableWidget(
             title: 'Promises Compliance',
+            columnHeaders: const ['Sr No', 'Promise', 'Status', 'Date', 'Action Taken'],
+            initialRows: 1,
           ),
         ],
       ],
@@ -1869,7 +1993,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         ),
         if (_technicalAuditStatus == 'carried_out') ...[
           const SizedBox(height: 16),
-          _buildTextField(label: '# of Findings'),
+          _buildTextField(label: 'Number of Findings'),
           const SizedBox(height: 12),
           _buildTextField(label: 'Details of Findings', maxLines: 3),
           const SizedBox(height: 12),
@@ -1907,17 +2031,31 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildRadioGroup(
-            value: _revAaProgressStatus,
-            options: const {
-              'in_progress': 'In Progress',
-              'submitted': 'Submitted',
-              'approved': 'Approved',
-              'board_approval': 'Board Approval',
-              'accorded': 'Revised AA Accorded'
-            },
-            onChanged: (value) =>
-                setState(() => _revAaProgressStatus = value!),
+          _buildRadioOption(
+            label: 'In Progress',
+            value: _revAaProgressStatus == 'in_progress',
+            onChanged: (val) => setState(() => _revAaProgressStatus = 'in_progress'),
+          ),
+          _buildRadioOptionWithCritical(
+            label: 'Submitted',
+            value: _revAaProgressStatus == 'submitted',
+            onChanged: (val) => setState(() => _revAaProgressStatus = 'submitted'),
+            criticalKey: 'rev_aa_submitted',
+          ),
+          _buildRadioOption(
+            label: 'Approved',
+            value: _revAaProgressStatus == 'approved',
+            onChanged: (val) => setState(() => _revAaProgressStatus = 'approved'),
+          ),
+          _buildRadioOption(
+            label: 'Board Approval',
+            value: _revAaProgressStatus == 'board_approval',
+            onChanged: (val) => setState(() => _revAaProgressStatus = 'board_approval'),
+          ),
+          _buildRadioOption(
+            label: 'Revised AA Accorded',
+            value: _revAaProgressStatus == 'accorded',
+            onChanged: (val) => setState(() => _revAaProgressStatus = 'accorded'),
           ),
           if (_revAaProgressStatus == 'accorded') ...[
             const SizedBox(height: 12),
@@ -2706,37 +2844,35 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
   }
 
   Widget _buildEOTCheckboxes() {
-    final options = {
-      'not_started': 'Proposal Not Started',
-      'under_consideration': 'Proposal Under Consideration',
-      'submitted': 'Proposal Submitted',
-      'approved': 'EOT Approved',
-      'with_escalation': 'With Escalation',
-      'without_escalation': 'Without Escalation',
-      'by_freezing_indices': 'By Freezing Indices',
-      'without_ld': 'Without LD',
-      'with_ld': 'With LD',
-      'compensation_payable': 'Compensation Payable',
-    };
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...options.entries.map((entry) {
-          return _buildCheckboxOption(
-            label: entry.value,
-            value: _eotOptions.contains(entry.key),
-            onChanged: (val) {
-              setState(() {
-                if (val == true) {
-                  _eotOptions.add(entry.key);
-                } else {
-                  _eotOptions.remove(entry.key);
-                }
-              });
-            },
-          );
-        }),
+        _buildCheckboxOption(
+          label: 'Proposal Not Started',
+          value: _eotOptions.contains('not_started'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('not_started');
+              } else {
+                _eotOptions.remove('not_started');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'Proposal Under Consideration',
+          value: _eotOptions.contains('under_consideration'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('under_consideration');
+              } else {
+                _eotOptions.remove('under_consideration');
+              }
+            });
+          },
+        ),
         if (_eotOptions.contains('under_consideration')) ...[
           const SizedBox(height: 12),
           Padding(
@@ -2744,6 +2880,20 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             child: _buildTextField(label: 'Period (Months)'),
           ),
         ],
+        _buildCheckboxOptionWithCritical(
+          label: 'Proposal Submitted',
+          value: _eotOptions.contains('submitted'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('submitted');
+              } else {
+                _eotOptions.remove('submitted');
+              }
+            });
+          },
+          criticalKey: 'eot_submitted_date',
+        ),
         if (_eotOptions.contains('submitted')) ...[
           const SizedBox(height: 12),
           Padding(
@@ -2751,6 +2901,19 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             child: _buildDateField(label: 'Date', fieldKey: 'EOT - Date'),
           ),
         ],
+        _buildCheckboxOption(
+          label: 'EOT Approved',
+          value: _eotOptions.contains('approved'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('approved');
+              } else {
+                _eotOptions.remove('approved');
+              }
+            });
+          },
+        ),
         if (_eotOptions.contains('approved')) ...[
           const SizedBox(height: 12),
           Padding(
@@ -2758,6 +2921,84 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             child: _buildTextField(label: 'Period (Months)'),
           ),
         ],
+        _buildCheckboxOption(
+          label: 'With Escalation',
+          value: _eotOptions.contains('with_escalation'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('with_escalation');
+              } else {
+                _eotOptions.remove('with_escalation');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'Without Escalation',
+          value: _eotOptions.contains('without_escalation'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('without_escalation');
+              } else {
+                _eotOptions.remove('without_escalation');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'By Freezing Indices',
+          value: _eotOptions.contains('by_freezing_indices'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('by_freezing_indices');
+              } else {
+                _eotOptions.remove('by_freezing_indices');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'Without LD',
+          value: _eotOptions.contains('without_ld'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('without_ld');
+              } else {
+                _eotOptions.remove('without_ld');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'With LD',
+          value: _eotOptions.contains('with_ld'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('with_ld');
+              } else {
+                _eotOptions.remove('with_ld');
+              }
+            });
+          },
+        ),
+        _buildCheckboxOption(
+          label: 'Compensation Payable',
+          value: _eotOptions.contains('compensation_payable'),
+          onChanged: (val) {
+            setState(() {
+              if (val == true) {
+                _eotOptions.add('compensation_payable');
+              } else {
+                _eotOptions.remove('compensation_payable');
+              }
+            });
+          },
+        ),
         if (_eotOptions.contains('compensation_payable')) ...[
           const SizedBox(height: 12),
           Padding(
