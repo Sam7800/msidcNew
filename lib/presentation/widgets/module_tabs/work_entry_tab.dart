@@ -3118,13 +3118,6 @@ class _WorkEntryTabState extends ConsumerState<WorkEntryTab> {
             ),
             const SizedBox(height: 12),
             _buildLabeledTextField(
-              label: 'Post Held',
-              fieldKey: '${prefix}_post_held',
-              hint: 'Enter post/designation',
-              enabled: _isEditing,
-            ),
-            const SizedBox(height: 12),
-            _buildLabeledTextField(
               label: 'Pending with whom',
               fieldKey: '${prefix}_pending_with',
               hint: 'Enter pending with whom',

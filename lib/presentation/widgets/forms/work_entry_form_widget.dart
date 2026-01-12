@@ -861,8 +861,6 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           _buildTextField(label: 'Proposed Amount (Rs. Crore/Lakhs)'),
           const SizedBox(height: 12),
           _buildDateField(label: 'Date of Proposal'),
-          const SizedBox(height: 12),
-          _buildTextField(label: 'Pending with whom'),
         ],
         if (_aaStatus == 'accorded') ...[
           _buildTextField(label: 'Amount (Rs. Crore/Lakhs)'),
@@ -873,6 +871,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Broad Scope', maxLines: 3),
         ],
+        _buildResponsibilityFields('aa'),
       ],
     ));
 
@@ -910,6 +909,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: _dprStatus == 'approved',
           onChanged: (val) => setState(() => _dprStatus = 'approved'),
         ),
+        _buildResponsibilityFields('dpr'),
       ],
     ));
 
@@ -952,6 +952,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ),
         ],
+        _buildResponsibilityFields('boq'),
       ],
     ));
 
@@ -989,6 +990,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: _schedulesStatus == 'approved',
           onChanged: (val) => setState(() => _schedulesStatus = 'approved'),
         ),
+        _buildResponsibilityFields('schedules'),
       ],
     ));
 
@@ -1026,6 +1028,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: _drawingsStatus == 'approved',
           onChanged: (val) => setState(() => _drawingsStatus = 'approved'),
         ),
+        _buildResponsibilityFields('drawings'),
       ],
     ));
 
@@ -1063,6 +1066,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: _bidDocumentsStatus == 'approved',
           onChanged: (val) => setState(() => _bidDocumentsStatus = 'approved'),
         ),
+        _buildResponsibilityFields('bid_documents'),
       ],
     ));
 
@@ -1084,6 +1088,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             setState(() => _envProposalStatus = value);
           }, section: 'ENV', underPrepCriticalKey: 'env_under_preparation'),
         ],
+        _buildResponsibilityFields('env'),
       ],
     ));
 
@@ -1105,6 +1110,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             setState(() => _laProposalStatus = value);
           }, section: 'LA', underPrepCriticalKey: 'la_under_preparation'),
         ],
+        _buildResponsibilityFields('la'),
       ],
     ));
 
@@ -1128,6 +1134,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             setState(() => _utilityShiftingProposalStatus = value);
           }, section: 'Utility Shifting', underPrepCriticalKey: 'utility_under_preparation', submittedDateCriticalKey: 'utility_submitted_date'),
         ],
+        _buildResponsibilityFields('utility_shifting'),
       ],
     ));
 
@@ -1173,6 +1180,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             initialRows: 1,
           ),
         ],
+        _buildResponsibilityFields('ts'),
       ],
     ));
 
@@ -1233,6 +1241,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             _buildDateField(label: 'Date of Submission'),
           ],
         ],
+        _buildResponsibilityFields('nit'),
       ],
     ));
 
@@ -1245,6 +1254,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
         _buildTextField(label: 'Number of Bidders Participated'),
         const SizedBox(height: 12),
         _buildTextField(label: 'Number of Written Applications Submitted'),
+        _buildResponsibilityFields('prebid'),
       ],
     ));
 
@@ -1283,6 +1293,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             child: _buildDateField(label: 'Date', fieldKey: 'CSD - Date'),
           ),
         ],
+        _buildResponsibilityFields('csd'),
       ],
     ));
 
@@ -1310,6 +1321,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ],
         ),
+        _buildResponsibilityFields('bid_submission'),
       ],
     ));
 
@@ -1359,6 +1371,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           onChanged: (val) => setState(
               () => _technicalEvaluationStatus = 'financial_bid_informed'),
         ),
+        _buildResponsibilityFields('tech_eval'),
       ],
     ));
 
@@ -1397,6 +1410,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           options: const {'above': 'Above', 'below': 'Below'},
           onChanged: (value) {},
         ),
+        _buildResponsibilityFields('fin_bid'),
       ],
     ));
 
@@ -1482,6 +1496,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Reasons', fieldKey: 'LOA - Reasons'),
         ],
+        _buildResponsibilityFields('loa'),
       ],
     ));
 
@@ -1541,6 +1556,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Period'),
         ],
+        _buildResponsibilityFields('pbg'),
       ],
     ));
 
@@ -1615,46 +1631,69 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'WO No.'),
         ],
+        _buildResponsibilityFields('work_order'),
       ],
     ));
 
     // 21. Agreement Amount
-    addSection('21. Agreement Amount', _buildTextField(label: 'Amount (Rs. Lakhs)'));
+    addSection('21. Agreement Amount', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(label: 'Amount (Rs. Lakhs)'),
+        _buildResponsibilityFields('agreement'),
+      ],
+    ));
 
     // 22. Appointed Date
-    addSection('22. Appointed Date', _buildDateField(label: 'Date', fieldKey: 'Appointed Date - Date'));
+    addSection('22. Appointed Date', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildDateField(label: 'Date', fieldKey: 'Appointed Date - Date'),
+        _buildResponsibilityFields('appointed_date'),
+      ],
+    ));
 
     // 23. Tender Period
-    addSection('23. Tender Period', _buildTextField(label: 'Number of Months'));
+    addSection('23. Tender Period', Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(label: 'Number of Months'),
+        _buildResponsibilityFields('tender_period'),
+      ],
+    ));
 
     // 24. Milestones (MS-I to MS-V)
     addSection('24. Milestones (MS-I to MS-V)', Column(
-      children: List.generate(5, (index) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (index > 0) const SizedBox(height: 16),
-            Text(
-              'MS-${['I', 'II', 'III', 'IV', 'V'][index]}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...List.generate(5, (index) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index > 0) const SizedBox(height: 16),
+              Text(
+                'MS-${['I', 'II', 'III', 'IV', 'V'][index]}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _buildTextField(label: 'Period'),
-            const SizedBox(height: 8),
-            _buildTextField(label: 'Physical Target (%)'),
-            const SizedBox(height: 8),
-            _buildTextField(label: 'Financial Target (Amount in Rs.)'),
-            const SizedBox(height: 8),
-            _buildTextField(label: 'Physical Target Achieved (%)'),
-            const SizedBox(height: 8),
-            _buildTextField(label: 'Financial Target Achieved (Amount +/-)'),
-          ],
-        );
-      }),
+              const SizedBox(height: 12),
+              _buildTextField(label: 'Period'),
+              const SizedBox(height: 8),
+              _buildTextField(label: 'Physical Target (%)'),
+              const SizedBox(height: 8),
+              _buildTextField(label: 'Financial Target (Amount in Rs.)'),
+              const SizedBox(height: 8),
+              _buildTextField(label: 'Physical Target Achieved (%)'),
+              const SizedBox(height: 8),
+              _buildTextField(label: 'Financial Target Achieved (Amount +/-)'),
+            ],
+          );
+        }),
+        _buildResponsibilityFields('milestones'),
+      ],
     ));
 
     // 25. LD (Liquidated Damages)
@@ -1682,6 +1721,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Final Amount Recovered from Contractor'),
         ],
+        _buildResponsibilityFields('ld'),
       ],
     ));
 
@@ -1701,6 +1741,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 16),
           _buildEOTCheckboxes(),
         ],
+        _buildResponsibilityFields('eot'),
       ],
     ));
 
@@ -1787,6 +1828,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             ),
           ],
         ],
+        _buildResponsibilityFields('cos'),
       ],
     ));
 
@@ -1804,6 +1846,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             fontStyle: FontStyle.italic,
           ),
         ),
+        _buildResponsibilityFields('expenditure'),
       ],
     ));
 
@@ -1880,6 +1923,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             initialRows: 1,
           ),
         ],
+        _buildResponsibilityFields('audit_para'),
       ],
     ));
 
@@ -1975,6 +2019,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             initialRows: 1,
           ),
         ],
+        _buildResponsibilityFields('laq'),
       ],
     ));
 
@@ -2001,6 +2046,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Compliance Submitted (# and Dates)'),
         ],
+        _buildResponsibilityFields('tech_audit'),
       ],
     ));
 
@@ -2066,6 +2112,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             _buildPhotoUploadButton(label: 'RAA Table of Recap Sheet'),
           ],
         ],
+        _buildResponsibilityFields('rev_aa'),
       ],
     ));
 
@@ -2094,6 +2141,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           const SizedBox(height: 12),
           _buildTextField(label: 'Period (Months)'),
         ],
+        _buildResponsibilityFields('suppl_agreement'),
       ],
     ));
 
@@ -2839,6 +2887,7 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
           value: _bidAcceptanceStatus == 'accepted',
           onChanged: (val) => setState(() => _bidAcceptanceStatus = 'accepted'),
         ),
+        _buildResponsibilityFields('bid_acceptance'),
       ],
     );
   }
@@ -3122,6 +3171,58 @@ class _WorkEntryFormWidgetState extends State<WorkEntryFormWidget> {
             child: const Text('Choose File'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build expandable responsibility fields section
+  Widget _buildResponsibilityFields(String prefix) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.border.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Row(
+            children: [
+              Icon(
+                Icons.people_outline,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Person Responsible & Tracking',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          children: [
+            const SizedBox(height: 12),
+            _buildTextField(
+              label: 'Person Responsible',
+              fieldKey: '${prefix}_person_responsible',
+            ),
+            const SizedBox(height: 12),
+            _buildTextField(
+              label: 'Pending with whom',
+              fieldKey: '${prefix}_pending_with',
+            ),
+          ],
+        ),
       ),
     );
   }
